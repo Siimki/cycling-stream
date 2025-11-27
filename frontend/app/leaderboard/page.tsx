@@ -146,7 +146,6 @@ export default function LeaderboardPage() {
                     <th className="text-left py-3 px-4 text-sm font-semibold text-muted-foreground">User</th>
                     <th className="text-left py-3 px-4 text-sm font-semibold text-muted-foreground">Points</th>
                     <th className="text-left py-3 px-4 text-sm font-semibold text-muted-foreground">Time Watched</th>
-                    <th className="text-left py-3 px-4 text-sm font-semibold text-muted-foreground">Profile</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -176,14 +175,17 @@ export default function LeaderboardPage() {
                           </div>
                         </td>
                         <td className="py-4 px-4">
-                          <div className="flex items-center gap-3">
+                          <Link
+                            href={`/users/${entry.id}`}
+                            className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+                          >
                             <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
                               <User className="w-4 h-4 text-primary" />
                             </div>
-                            <span className="font-medium text-foreground/95">
+                            <span className="font-medium text-foreground/95 hover:text-primary transition-colors">
                               {entry.name || 'Anonymous'}
                             </span>
-                          </div>
+                          </Link>
                         </td>
                         <td className="py-4 px-4 text-left">
                           <div className="flex items-center gap-1">
@@ -200,14 +202,6 @@ export default function LeaderboardPage() {
                               {formatWatchTime(entry.total_watch_minutes)}
                             </span>
                           </div>
-                        </td>
-                        <td className="py-4 px-4 text-left">
-                          <Link
-                            href={`/users/${entry.id}`}
-                            className="inline-flex items-center text-sm text-primary hover:text-primary/80 hover:underline transition-colors"
-                          >
-                            View
-                          </Link>
                         </td>
                       </tr>
                     );
