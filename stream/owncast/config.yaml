@@ -1,0 +1,51 @@
+# Owncast Configuration
+# Copy this file and customize for your deployment
+
+instanceDetails:
+  name: CyclingStream
+  title: CyclingStream Platform
+  summary: Pro cycling streaming platform
+  tags:
+    - cycling
+    - sports
+    - live
+
+videoSettings:
+  chunkLengthInSeconds: 6
+  # Stream key should be set via OWNCAST_STREAM_KEY environment variable
+  # Generate a secure key: openssl rand -hex 32
+  # NEVER use default or weak keys in production!
+  streamingKey: ${OWNCAST_STREAM_KEY}
+  streamKeyOverrides: []
+
+ffmpegSettings:
+  videoCodec: libx264
+  audioCodec: aac
+  videoBitrate: 2500
+  audioBitrate: 128
+  framerate: 30
+  resolution: 1280x720
+
+# HLS output settings
+hlsSettings:
+  segmentLength: 6
+  playlistLength: 30
+
+# CORS settings for video player
+# In production, replace "*" with your frontend domain(s)
+# Example: ["https://cyclingstream.com", "https://www.cyclingstream.com"]
+# In development, "*" is acceptable for local testing
+cors:
+  allowedOrigins:
+    - "*"  # TODO: Replace with specific frontend domain(s) in production
+
+# Server settings
+server:
+  port: 8080
+  ip: "0.0.0.0"
+
+# Database (uses SQLite by default)
+database:
+  type: sqlite
+  path: /app/data/database.db
+

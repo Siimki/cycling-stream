@@ -1,0 +1,292 @@
+# Cursor Rules for CyclingStream Platform
+
+## 🧠 Project Context & Philosophy
+- **Role:** Solo Founder / Junior Dev / Business Analyst.
+- **Goal:** Build a functional MVP step-by-step. Avoid over-engineering.
+- **Architecture:** Monorepo with strict separation of concerns.
+- **Tech Stack:**
+  - **Backend:** Go (Golang) with Fiber framework.
+  - **Database:** PostgreSQL (using raw SQL or sqlc, avoid heavy ORMs like Gorm if possible).
+  - **Frontend:** Next.js 14+ (App Router), TypeScript, Tailwind CSS.
+  - **Streaming:** Owncast / Nginx-rtmp / HLS.
+  - **Infra:** Docker Compose, Makefile.
+
+## 📂 Project Structure Rules
+- **Root:** Contains `Makefile`, `docker-compose.yml`, and documentation.
+- **backend/**: All Go code.
+  - `cmd/api/`: Entry point (`main.go`).
+  - `internal/`: Private application logic (handlers, models, repository).
+  - `migrations/`: SQL migration files.
+- **frontend/**: All Next.js code.
+  - `app/`: App Router pages and layouts.
+  - `components/`: Reusable UI components.
+  - `lib/`: API fetchers and utilities.
+- **stream/**: RTMP/HLS server configuration (Owncast/Nginx).
+
+---
+
+## 🐹 Backend Guidelines (Go)
+
+### Code Style
+- **Formatting:** Always follow standard `gofmt` style.
+- **Error Handling:**
+  - NEVER ignore errors with `_`.
+  - Return errors as the last return value.
+  - Wrap errors with context: `fmt.Errorf("failed to fetch races: %w", err)`.
+  - Use early returns (guard clauses) to keep nesting shallow.
+- **Variable Naming:** Use `camelCase` for local variables, `PascalCase` for exported struct fields/functions. Short names (`ctx`, `db`, `err`) are acceptable in small scopes.
+
+### Fiber Framework Specifics
+- Use `c *fiber.Ctx` for handlers.
+- Return JSON responses using standard structs: `return c.Status(fiber.StatusOK).JSON(data)`.
+- Group routes in `internal/server/routes.go`.
+- Use middleware for cross-cutting concerns (auth, logging, CORS).
+- Keep handlers thin - delegate business logic to service/repository layers.
+
+### API Design
+- Use RESTful API conventions.
+- Implement proper HTTP status codes (200, 201, 400, 401, 404, 500, etc.).
+- Use structured logging (logrus, zap, or similar).
+
+### Handlers, Helpers & Error Patterns
+- **Always use shared helpers** in `backend/internal/handlers` to keep handlers thin and consistent. These helpers were introduced to eliminate duplication across handlers.
+- **HTTP Helpers** (`http_helpers.go`):
+  - `parseBody(c, &req)` - Request parsing with standard `400 {"error":"Invalid request body"}` on failure. **Use this instead of** `c.BodyParser` + manual error handling.
+  - `requireParam(c, "id", "Race ID is required")` - Required path/query parameters. **Use this instead of** manual `c.Params("id") == ""` checks.
+  - `requireUserID(c, "Authentication required")` - Authenticated endpoints. **Use this instead of** ad-hoc `c.Locals("user_id").(string)` + 401 branches.
+  - `APIError` - Canonical error struct for consistent `{"error": "..."}` responses.
+- **Race/Stream Helpers** (`race_utils.go`):
+  - `loadRaceOr404(c, raceRepo, id)` - Race lookups with consistent `500`/`404` handling. **Use this instead of** manual `GetByID` + nil checks + error responses.
+  - `loadStreamOr404(c, streamRepo, raceID, notFoundMessage)` - Stream lookups by race ID. **Use this instead of** manual `GetByRaceID` + nil checks.
+- **Session Helpers** (`session_utils.go`):
+  - `verifyViewerSessionOwnership(c, viewerSessionRepo, sessionID)` - Enforce that a viewer session belongs to the authenticated user (when present). **Use this instead of** manual session lookup + ownership checks.
+- **When adding new endpoints**: Always check if a helper exists before writing inline validation/error handling. If a pattern repeats 2+ times, consider extracting a new helper.
+
+### Database (Postgres)
+- Use `database/sql` or `pgx` driver.
+- Prefer writing raw SQL queries in `repository` packages over using an ORM.
+- Use **snake_case** for database table columns and **json tags** in Go structs to map them.
+- Use migrations for all schema changes (in `backend/migrations/`).
+- Never modify production database directly.
+- Index frequently queried columns.
+- Use transactions for multi-step operations.
+- Keep migrations reversible when possible.
+- Use parameterized queries to prevent SQL injection.
+
+```go
+type Race struct {
+    ID        string `json:"id" db:"id"`
+    Name      string `json:"name" db:"name"`
+    CreatedAt string `json:"created_at" db:"created_at"`
+}
+```
+
+---
+
+## ⚛️ Frontend Guidelines (Next.js)
+
+### Code Style
+- **TypeScript:** Use strict mode. Prefer interfaces over types for object shapes.
+- **Formatting:** Use Prettier with project defaults.
+- **Naming:** Use `PascalCase` for components, `camelCase` for functions/variables, `kebab-case` for files.
+- **Imports:** Group imports (external, internal, relative) with blank lines.
+
+### Next.js App Router (14+)
+- Use Server Components by default, Client Components only when needed (`"use client"`).
+- Use `async/await` for Server Components and data fetching.
+- Leverage `loading.tsx` and `error.tsx` for automatic UI states.
+- Use Route Handlers (`route.ts`) for API endpoints when needed.
+- Prefer Server Actions for mutations over API routes when possible.
+
+### Component Structure
+- Keep components small and focused on a single responsibility.
+- Extract reusable logic into custom hooks.
+- Use semantic HTML elements.
+- Ensure responsive design and mobile compatibility.
+- Handle loading and error states gracefully.
+
+### Styling (Tailwind CSS)
+- Use Tailwind utility classes, avoid custom CSS when possible.
+- Use `@apply` sparingly, only for repeated patterns.
+- Follow mobile-first responsive design.
+- Use Tailwind's design tokens (colors, spacing, typography) consistently.
+- Optimize for performance (purge unused styles in production).
+
+### Data Fetching
+- Use `fetch` with Next.js caching strategies (`cache: 'force-cache'`, `revalidate`, etc.).
+- Create API client utilities in `lib/` for backend communication.
+- Handle errors with try/catch and display user-friendly messages.
+- Use React Query or SWR for client-side data fetching if needed.
+
+### Accessibility
+- Follow WCAG 2.1 AA guidelines.
+- Use proper ARIA labels and roles.
+- Ensure keyboard navigation works.
+- Maintain sufficient color contrast.
+- Test with screen readers.
+
+### Performance
+- Use `next/image` for images with proper sizing.
+- Implement code splitting and lazy loading.
+- Minimize bundle sizes.
+- Use `next/dynamic` for heavy components.
+- Optimize fonts with `next/font`.
+
+---
+
+## 📡 Streaming Guidelines
+
+### Owncast Configuration
+- Store configuration in `stream/owncast/` directory.
+- Configure RTMP ingest endpoint for OBS/streaming software.
+- Set up HLS output with appropriate segment duration (6-10 seconds).
+- Configure stream keys securely (use environment variables).
+- Set up proper CORS headers for video player access.
+
+### Nginx-RTMP (Alternative)
+- Store configuration in `stream/nginx/` directory.
+- Configure RTMP module for ingest.
+- Set up HLS output with proper segmenting.
+- Configure HTTP server for HLS delivery.
+- Use proper caching headers for `.m3u8` and `.ts` files.
+
+### HLS Best Practices
+- Use consistent segment duration across streams.
+- Ensure proper CORS configuration for cross-origin playback.
+- Set appropriate cache headers (short for `.m3u8`, longer for `.ts`).
+- Monitor segment generation and delivery latency.
+- Test playback on multiple devices and browsers.
+
+### CDN Integration (BunnyCDN)
+- Use pull zones pointing to origin HLS path.
+- Configure proper cache rules for HLS content.
+- Monitor CDN bandwidth and costs.
+- Set up proper origin failover if needed.
+
+---
+
+## 🐳 Infrastructure Guidelines
+
+### Docker Compose
+- Keep services defined in root `docker-compose.yml`.
+- Use environment variables for configuration (`.env` files, never commit secrets).
+- Define health checks for services.
+- Use named volumes for persistent data (Postgres).
+- Keep development and production configs separate when needed.
+
+### Makefile
+- Create shortcuts for common tasks:
+  - `make docker-up`: Start all services
+  - `make docker-down`: Stop all services
+  - `make run-backend`: Run backend server
+  - `make run-frontend`: Run frontend dev server
+  - `make migrate-up`: Run database migrations
+  - `make migrate-down`: Rollback migrations
+  - `make test`: Run all tests
+- Keep commands simple and well-documented.
+
+### Environment Variables
+- Use `.env.example` files to document required variables.
+- Never commit `.env` files or secrets.
+- Use different `.env` files for different environments.
+- Validate required environment variables at startup.
+
+---
+
+## 🔒 Security Best Practices
+
+- Never commit secrets, API keys, or credentials.
+- Use environment variables for all sensitive configuration.
+- Validate and sanitize all user inputs (both frontend and backend).
+- Implement proper authentication and authorization.
+- Use HTTPS in production.
+- Implement rate limiting for API endpoints.
+- Use secure session management (httpOnly cookies, CSRF protection).
+- Keep dependencies up to date and scan for vulnerabilities.
+
+---
+
+## 🧪 Testing Guidelines
+
+- Write tests for critical functionality.
+- Keep tests simple and focused.
+- Use descriptive test names that explain what is being tested.
+- **Backend:** Use Go's `testing` package, prefer table-driven tests.
+- **Frontend:** Use Jest and React Testing Library for component tests.
+- Test error cases, not just happy paths.
+- Mock external dependencies (databases, APIs) in tests.
+- Aim for good coverage, but prioritize meaningful tests over coverage percentage.
+
+---
+
+## 📝 Documentation
+
+- Document public APIs and complex functions.
+- Keep README files up to date.
+- Document environment variables and setup requirements.
+- Add inline comments for complex business logic.
+- Prefer self-documenting code over excessive comments.
+- Document API endpoints (consider OpenAPI/Swagger for backend).
+
+---
+
+## 🚀 Performance Optimization
+
+- Optimize database queries (avoid N+1 problems).
+- Implement caching where appropriate (Redis for backend, Next.js caching for frontend).
+- Minimize bundle sizes (tree shaking, code splitting).
+- Use pagination for large datasets.
+- Profile and measure before optimizing.
+- Monitor application performance in production.
+- Use database indexes effectively.
+- Optimize images and static assets.
+
+---
+
+## 📦 Git & Version Control
+
+- Write clear, descriptive commit messages.
+- Use conventional commit format when possible (`feat:`, `fix:`, `docs:`, etc.).
+- Keep commits focused and atomic.
+- Review changes before committing.
+- Use meaningful branch names.
+- Keep main/master branch stable and deployable.
+
+---
+
+## 🔄 When Making Changes
+
+- Read existing code to understand patterns and conventions.
+- Maintain consistency with existing codebase style.
+- Update related documentation when changing functionality.
+- **Always keep startup docs up to date:** if you change how the app is started (ports, Makefile targets, Docker services, env vars, etc.), update both the root `README.md` quickstart section and the `.cursorrules` “Running the app” section so future Cursor agents use the correct instructions.
+- Consider backward compatibility.
+- Test changes thoroughly before marking as complete.
+- Run linters and formatters before committing.
+- Update tests when changing functionality.
+
+---
+
+## 🏃 Running the app (for Cursor agents)
+
+- **Database & infra**
+  - Start Docker services from the repo root:
+    - `make docker-up`
+  - Postgres runs in Docker and is exposed on **host port 5434** (see `docker-compose.yml`).
+  - Backend config defaults:
+    - `DB_HOST=localhost`
+    - `DB_PORT=5434`
+- **Migrations**
+  - Preferred (if `migrate` CLI is installed): `make migrate-up`.
+  - Fallback (do NOT prefer this if `migrate` is available):
+    - `cat backend/migrations/0*.sql | docker exec -i cyclingstream_postgres psql -U cyclingstream -d cyclingstream`
+- **Backend API**
+  - From project root: `make run-backend`
+  - API base URL: `http://localhost:8080`
+  - Health: `GET http://localhost:8080/health` should return status 200 JSON.
+- **Frontend**
+  - From project root: `make run-frontend`
+  - Frontend URL: `http://localhost:3000`
+  - Frontend expects backend at `NEXT_PUBLIC_API_URL` and defaults to `http://localhost:8080`.
+- **Important for agents**
+  - When changing any of the above (ports, commands, env defaults, Docker services), **update this section and `README.md`** during the same change so future Cursor agents and the human can rely on them.

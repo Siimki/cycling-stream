@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  owncast:
+    image: gabekangas/owncast:latest
+    container_name: owncast
+    restart: unless-stopped
+    ports:
+      # Note: Port 8080 conflicts with backend API. Use a different port in production.
+      # Consider using 8081 or configure via OWNCAST_PORT environment variable
+      - "${OWNCAST_HTTP_PORT:-8081}:8080"  # HTTP (mapped to avoid conflict with backend)
+      - "${OWNCAST_RTMP_PORT:-1935}:1935"  # RTMP
+    volumes:
+      - ./data:/app/data
+      - ./config.yaml:/app/config.yaml
+    environment:
+      # Stream key should be set via environment variable, never use default in production
+      - OWNCAST_STREAM_KEY=${OWNCAST_STREAM_KEY:-changeme}
+    networks:
+      - owncast-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8080/api/status || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    # Resource limits for production readiness
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+networks:
+  owncast-network:
+    driver: bridge
+

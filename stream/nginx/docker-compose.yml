@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  nginx-rtmp:
+    image: tiangolo/nginx-rtmp
+    container_name: nginx-rtmp
+    restart: unless-stopped
+    ports:
+      - "${NGINX_RTMP_PORT:-1935}:1935"  # RTMP
+      # Note: Port 8080 conflicts with backend API. Use a different port in production.
+      - "${NGINX_HTTP_PORT:-8081}:80"    # HTTP for HLS (mapped to avoid conflict with backend)
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - hls-data:/var/www/hls
+    networks:
+      - nginx-rtmp-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    # Resource limits for production readiness
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+
+volumes:
+  hls-data:
+
+networks:
+  nginx-rtmp-network:
+    driver: bridge
+

@@ -1,0 +1,192 @@
+package server
+
+import (
+	"github.com/cyclingstream/backend/internal/chat"
+	"github.com/cyclingstream/backend/internal/config"
+	"github.com/cyclingstream/backend/internal/database"
+	"github.com/cyclingstream/backend/internal/handlers"
+	"github.com/cyclingstream/backend/internal/middleware"
+	"github.com/cyclingstream/backend/internal/repository"
+	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/cors"
+)
+
+func SetupRoutes(app *fiber.App, db *database.DB, cfg *config.Config, hub *chat.Hub, rateLimiter *chat.RateLimiter) {
+	// Global middleware - order matters!
+	app.Use(middleware.StructuredLogger())
+	app.Use(middleware.SecurityHeaders()) // Security headers first
+
+	// CORS configuration - environment-aware
+	corsOrigins := cfg.FrontendURL
+	if cfg.Env == "development" {
+		// In development, allow localhost:3000 by default if not set in FrontendURL, 
+		// but since FrontendURL defaults to localhost:3000, we can just use that.
+		// If we need multiple, we can comma separate them.
+		if corsOrigins == "*" {
+             // If someone explicitly set FRONTEND_URL=*, we can't use AllowCredentials=true
+             // But let's assume we want credentials.
+             corsOrigins = "http://localhost:3000"
+        }
+	}
+
+	app.Use(cors.New(cors.Config{
+		AllowOrigins:     corsOrigins,
+		AllowMethods:     "GET,POST,PUT,DELETE,OPTIONS",
+		AllowHeaders:     "Content-Type,Authorization,X-CSRF-Token",
+		AllowCredentials: true,
+	}))
+
+	// Initialize repositories
+	raceRepo := repository.NewRaceRepository(db.DB)
+	streamRepo := repository.NewStreamRepository(db.DB)
+	userRepo := repository.NewUserRepository(db.DB)
+	paymentRepo := repository.NewPaymentRepository(db.DB)
+	entitlementRepo := repository.NewEntitlementRepository(db.DB)
+	watchSessionRepo := repository.NewWatchSessionRepository(db.DB)
+	revenueRepo := repository.NewRevenueRepository(db.DB)
+	viewerSessionRepo := repository.NewViewerSessionRepository(db.DB)
+	costRepo := repository.NewCostRepository(db.DB)
+	chatRepo := repository.NewChatRepository(db.DB)
+
+	// Initialize handlers
+	healthHandler := handlers.NewHealthHandler(db)
+	raceHandler := handlers.NewRaceHandler(raceRepo, streamRepo, entitlementRepo)
+	streamHandler := handlers.NewStreamHandler(streamRepo)
+	authHandler := handlers.NewAuthHandler(userRepo, cfg.JWTSecret)
+	adminHandler := handlers.NewAdminHandler(raceRepo, streamRepo, revenueRepo)
+	paymentHandler := handlers.NewPaymentHandler(
+		paymentRepo,
+		entitlementRepo,
+		raceRepo,
+		cfg.StripeKey,
+		cfg.StripeWebhookSecret,
+	)
+	watchHandler := handlers.NewWatchHandler(watchSessionRepo, userRepo)
+	viewerHandler := handlers.NewViewerHandler(viewerSessionRepo)
+	analyticsHandler := handlers.NewAnalyticsHandler(
+		raceRepo,
+		viewerSessionRepo,
+		watchSessionRepo,
+		revenueRepo,
+	)
+	costHandler := handlers.NewCostHandler(costRepo, raceRepo)
+	chatHandler := handlers.NewChatHandler(chatRepo, raceRepo, streamRepo, userRepo, hub, rateLimiter)
+	userHandler := handlers.NewUserHandler(userRepo, watchSessionRepo)
+
+	// Middleware instances
+	authMiddleware := middleware.AuthMiddleware(cfg.JWTSecret)
+	userAuthMiddleware := middleware.UserAuthMiddleware(cfg.JWTSecret)
+	optionalUserAuthMiddleware := middleware.OptionalUserAuthMiddleware(cfg.JWTSecret)
+	chatAuthMiddleware := middleware.ChatAuthMiddleware(cfg.JWTSecret)
+	csrfProtection := middleware.CSRFProtection(cfg.JWTSecret)
+
+	// Setup route groups
+	setupPublicRoutes(app, healthHandler, raceHandler, userHandler)
+	setupAuthRoutes(app, authHandler)
+	setupViewerRoutes(app, viewerHandler, optionalUserAuthMiddleware)
+	setupStreamRoutes(app, raceHandler, streamHandler, optionalUserAuthMiddleware)
+	setupChatRoutes(app, chatHandler, chatAuthMiddleware)
+	setupUserRoutes(app, authHandler, paymentHandler, watchHandler, userAuthMiddleware, csrfProtection)
+	setupWebhookRoutes(app, paymentHandler)
+	setupAdminRoutes(app, adminHandler, analyticsHandler, costHandler, authMiddleware, csrfProtection)
+}
+
+func setupPublicRoutes(app *fiber.App, healthHandler *handlers.HealthHandler, raceHandler *handlers.RaceHandler, userHandler *handlers.UserHandler) {
+	// Public routes with lenient rate limiting
+	public := app.Group("", middleware.LenientRateLimiter())
+	public.Get("/health", healthHandler.GetHealth)
+	public.Get("/races", raceHandler.GetRaces)
+	// Public user profile (no auth required) - uses /profiles to avoid conflict with authenticated /users group
+	public.Get("/profiles/:id", userHandler.GetPublicProfile)
+	// General race routes (must be after more specific routes in other groups, but here strict ordering depends on framework)
+	// Fiber matches first, so specific routes should be registered before parameterized routes if they conflict.
+	// /races/:id is quite generic, so ensuring it doesn't conflict is key.
+	public.Get("/races/:id", raceHandler.GetRaceByID)
+}
+
+func setupAuthRoutes(app *fiber.App, authHandler *handlers.AuthHandler) {
+	// Auth routes with strict rate limiting (prevent brute force)
+	auth := app.Group("/auth", middleware.StrictRateLimiter())
+	auth.Post("/register", authHandler.Register)
+	auth.Post("/login", authHandler.Login)
+}
+
+func setupViewerRoutes(app *fiber.App, viewerHandler *handlers.ViewerHandler, optionalAuth fiber.Handler) {
+	// Viewer tracking routes (public, but supports authenticated users)
+	// Must be before /races/:id to avoid route conflicts
+	viewer := app.Group("", middleware.LenientRateLimiter())
+	viewer.Post("/viewers/sessions/start", optionalAuth, viewerHandler.StartSession)
+	viewer.Post("/viewers/sessions/end", optionalAuth, viewerHandler.EndSession)
+	viewer.Post("/viewers/sessions/heartbeat", optionalAuth, viewerHandler.Heartbeat)
+	viewer.Get("/races/:id/viewers/concurrent", viewerHandler.GetConcurrentViewers)
+	viewer.Get("/races/:id/viewers/unique", viewerHandler.GetUniqueViewers)
+}
+
+func setupStreamRoutes(app *fiber.App, raceHandler *handlers.RaceHandler, streamHandler *handlers.StreamHandler, optionalAuth fiber.Handler) {
+	// Stream endpoint - optional auth (checks inside handler)
+	stream := app.Group("", middleware.LenientRateLimiter())
+	stream.Get("/races/:id/stream", optionalAuth, raceHandler.GetRaceStream)
+	stream.Get("/races/:id/stream/status", streamHandler.GetStreamStatus)
+}
+
+func setupChatRoutes(app *fiber.App, chatHandler *handlers.ChatHandler, chatAuth fiber.Handler) {
+	// Chat routes - MUST be before /races/:id to avoid route conflicts
+	chatRoutes := app.Group("", middleware.LenientRateLimiter())
+	chatRoutes.Get("/races/:id/chat/ws", chatAuth, chatHandler.HandleWebSocket)
+	chatRoutes.Get("/races/:id/chat/history", chatHandler.GetChatHistory)
+	chatRoutes.Get("/races/:id/chat/stats", chatHandler.GetChatStats)
+}
+
+func setupUserRoutes(app *fiber.App, authHandler *handlers.AuthHandler, paymentHandler *handlers.PaymentHandler, watchHandler *handlers.WatchHandler, userAuth fiber.Handler, csrf fiber.Handler) {
+	// Protected user routes with standard rate limiting and CSRF protection
+	user := app.Group("/users", userAuth, middleware.StandardRateLimiter(), csrf)
+	user.Get("/me", authHandler.GetProfile)
+	user.Post("/me/password", authHandler.ChangePassword)
+	user.Post("/me/points/bonus", authHandler.AwardBonusPoints)
+	user.Post("/payments/create-checkout", paymentHandler.CreateCheckout)
+	user.Post("/watch/sessions/start", watchHandler.StartSession)
+	user.Post("/watch/sessions/end", watchHandler.EndSession)
+	user.Get("/watch/sessions/stats/:race_id", watchHandler.GetStats)
+}
+
+func setupWebhookRoutes(app *fiber.App, paymentHandler *handlers.PaymentHandler) {
+	// Webhooks (no auth required, uses Stripe signature)
+	// CSRF is automatically skipped for webhooks
+	webhook := app.Group("/webhooks", middleware.StrictRateLimiter())
+	webhook.Post("/stripe", paymentHandler.HandleWebhook)
+}
+
+func setupAdminRoutes(app *fiber.App, adminHandler *handlers.AdminHandler, analyticsHandler *handlers.AnalyticsHandler, costHandler *handlers.CostHandler, adminAuth fiber.Handler, csrf fiber.Handler) {
+	// Admin routes (protected) with standard rate limiting and CSRF protection
+	admin := app.Group("/admin", adminAuth, middleware.StandardRateLimiter(), csrf)
+
+	// Races
+	admin.Post("/races", adminHandler.CreateRace)
+	admin.Put("/races/:id", adminHandler.UpdateRace)
+	admin.Delete("/races/:id", adminHandler.DeleteRace)
+
+	// Streams
+	admin.Post("/races/:id/stream", adminHandler.UpdateStream)
+	admin.Put("/races/:id/stream/status", adminHandler.UpdateStreamStatus)
+
+	// Revenue
+	admin.Get("/revenue", adminHandler.GetRevenue)
+	admin.Get("/revenue/races/:id", adminHandler.GetRevenueByRace)
+	admin.Get("/revenue/races/:id/summary", adminHandler.GetRevenueSummaryByRace)
+	admin.Post("/revenue/recalculate", adminHandler.RecalculateRevenue)
+	admin.Post("/revenue/recalculate/:year/:month", adminHandler.RecalculateRevenueForPeriod)
+
+	// Analytics
+	admin.Get("/analytics/races", analyticsHandler.GetRaceAnalytics)
+	admin.Get("/analytics/watch-time", analyticsHandler.GetWatchTimeAnalytics)
+	admin.Get("/analytics/revenue", analyticsHandler.GetRevenueAnalytics)
+
+	// Costs
+	admin.Post("/costs", costHandler.CreateCost)
+	admin.Get("/costs", costHandler.GetCosts)
+	admin.Get("/costs/summary", costHandler.GetCostSummary)
+	admin.Get("/costs/:id", costHandler.GetCostByID)
+	admin.Put("/costs/:id", costHandler.UpdateCost)
+	admin.Delete("/costs/:id", costHandler.DeleteCost)
+	admin.Get("/costs/races/:race_id", costHandler.GetCostsByRace)
+}
