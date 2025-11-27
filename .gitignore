@@ -14,6 +14,7 @@ dist/
 build/
 .next/
 out/
+*.tsbuildinfo
 
 # Go
 *.exe
@@ -24,6 +25,8 @@ out/
 *.test
 *.out
 go.work
+backend/api
+backend/main
 
 # IDE
 .vscode/
