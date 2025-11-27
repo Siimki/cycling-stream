@@ -23,10 +23,10 @@ export default function LoadingSpinner({
     <div className={containerClasses}>
       <div className="text-center">
         <div
-          className={`animate-spin rounded-full border-b-2 border-blue-600 mx-auto ${sizeClasses[size]}`}
+          className={`animate-spin rounded-full border-b-2 border-primary mx-auto ${sizeClasses[size]}`}
         ></div>
         {text && (
-          <p className="mt-4 text-gray-600 text-sm animate-pulse">{text}</p>
+          <p className="mt-4 text-muted-foreground text-sm animate-pulse">{text}</p>
         )}
       </div>
     </div>

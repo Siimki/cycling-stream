@@ -23,7 +23,7 @@ const RechartsCharts = dynamic(
     ssr: false,
     loading: () => (
       <div className="flex items-center justify-center h-96">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     ),
   }
@@ -131,28 +131,28 @@ export default function AnalyticsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading analytics...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">Loading analytics...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow-sm">
+    <div className="min-h-screen bg-background">
+      <header className="bg-card shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
           <div className="flex items-center space-x-4">
-            <Link href="/admin" className="text-blue-600 hover:text-blue-800">
+            <Link href="/admin" className="text-primary hover:text-primary/80">
               ← Back to Admin
             </Link>
-            <h1 className="text-2xl font-bold text-gray-900">Analytics Dashboard</h1>
+            <h1 className="text-2xl font-bold text-foreground">Analytics Dashboard</h1>
           </div>
           <button
             onClick={handleLogout}
-            className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700"
+            className="px-4 py-2 bg-secondary text-secondary-foreground rounded hover:bg-secondary/80"
           >
             Logout
           </button>
@@ -161,33 +161,33 @@ export default function AnalyticsPage() {
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {error && (
-          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded text-red-600">
+          <div className="mb-4 p-4 bg-destructive/10 border border-destructive/20 rounded text-destructive">
             {error}
           </div>
         )}
 
         {/* Filters */}
-        <div className="mb-6 bg-white p-4 rounded-lg shadow">
+        <div className="mb-6 bg-card p-4 rounded-lg shadow">
           <div className="flex items-center space-x-4">
-            <label className="text-sm font-medium text-gray-700">
+            <label className="text-sm font-medium text-foreground">
               Year:
               <input
                 type="number"
                 value={selectedYear || ''}
                 onChange={(e) => setSelectedYear(e.target.value ? parseInt(e.target.value) : undefined)}
-                className="ml-2 px-3 py-1 border border-gray-300 rounded"
+                className="ml-2 px-3 py-1 border border-border rounded bg-background text-foreground"
                 placeholder="All years"
                 min="2020"
                 max="2100"
               />
             </label>
-            <label className="text-sm font-medium text-gray-700">
+            <label className="text-sm font-medium text-foreground">
               Month:
               <input
                 type="number"
                 value={selectedMonth || ''}
                 onChange={(e) => setSelectedMonth(e.target.value ? parseInt(e.target.value) : undefined)}
-                className="ml-2 px-3 py-1 border border-gray-300 rounded"
+                className="ml-2 px-3 py-1 border border-border rounded bg-background text-foreground"
                 placeholder="All months"
                 min="1"
                 max="12"
@@ -198,7 +198,7 @@ export default function AnalyticsPage() {
                 setSelectedYear(undefined);
                 setSelectedMonth(undefined);
               }}
-              className="px-4 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
+              className="px-4 py-1 bg-muted text-foreground rounded hover:bg-muted/80"
             >
               Clear Filters
             </button>
@@ -207,19 +207,19 @@ export default function AnalyticsPage() {
 
         {/* Viewer Analytics Section */}
         <section className="mb-8">
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="bg-card rounded-lg shadow p-6">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold text-gray-900">Viewer Analytics</h2>
+              <h2 className="text-xl font-bold text-foreground">Viewer Analytics</h2>
               <div className="space-x-2">
                 <button
                   onClick={() => handleExportRaceAnalytics('csv')}
-                  className="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700"
+                  className="px-3 py-1 text-sm bg-success text-success-foreground rounded hover:bg-success/90"
                 >
                   Export CSV
                 </button>
                 <button
                   onClick={() => handleExportRaceAnalytics('json')}
-                  className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+                  className="px-3 py-1 text-sm bg-info text-info-foreground rounded hover:bg-info/90"
                 >
                   Export JSON
                 </button>
@@ -235,26 +235,26 @@ export default function AnalyticsPage() {
                 />
               </>
             ) : (
-              <p className="text-gray-500">No viewer data available</p>
+              <p className="text-muted-foreground">No viewer data available</p>
             )}
           </div>
         </section>
 
         {/* Watch Time Analytics Section */}
         <section className="mb-8">
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="bg-card rounded-lg shadow p-6">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold text-gray-900">Watch Time Analytics</h2>
+              <h2 className="text-xl font-bold text-foreground">Watch Time Analytics</h2>
               <div className="space-x-2">
                 <button
                   onClick={() => handleExportWatchTime('csv')}
-                  className="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700"
+                  className="px-3 py-1 text-sm bg-success text-success-foreground rounded hover:bg-success/90"
                 >
                   Export CSV
                 </button>
                 <button
                   onClick={() => handleExportWatchTime('json')}
-                  className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+                  className="px-3 py-1 text-sm bg-info text-info-foreground rounded hover:bg-info/90"
                 >
                   Export JSON
                 </button>
@@ -270,26 +270,26 @@ export default function AnalyticsPage() {
                 />
               </>
             ) : (
-              <p className="text-gray-500">No watch time data available</p>
+              <p className="text-muted-foreground">No watch time data available</p>
             )}
           </div>
         </section>
 
         {/* Revenue Analytics Section */}
         <section className="mb-8">
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="bg-card rounded-lg shadow p-6">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold text-gray-900">Revenue Analytics</h2>
+              <h2 className="text-xl font-bold text-foreground">Revenue Analytics</h2>
               <div className="space-x-2">
                 <button
                   onClick={() => handleExportRevenue('csv')}
-                  className="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700"
+                  className="px-3 py-1 text-sm bg-success text-success-foreground rounded hover:bg-success/90"
                 >
                   Export CSV
                 </button>
                 <button
                   onClick={() => handleExportRevenue('json')}
-                  className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+                  className="px-3 py-1 text-sm bg-info text-info-foreground rounded hover:bg-info/90"
                 >
                   Export JSON
                 </button>
@@ -305,7 +305,7 @@ export default function AnalyticsPage() {
                 />
               </>
             ) : (
-              <p className="text-gray-500">No revenue data available</p>
+              <p className="text-muted-foreground">No revenue data available</p>
             )}
           </div>
         </section>

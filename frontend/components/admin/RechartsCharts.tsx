@@ -78,24 +78,24 @@ export default function RechartsCharts({
         </div>
 
         <div className="mt-6 overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+          <table className="min-w-full divide-y divide-border">
+            <thead className="bg-muted">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Race</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Concurrent</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Unique</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Authenticated</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Anonymous</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Race</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Concurrent</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Unique</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Authenticated</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Anonymous</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-card divide-y divide-border">
               {raceAnalytics.map((race) => (
                 <tr key={race.race_id}>
-                  <td className="px-4 py-3 text-sm text-gray-900">{race.race_name}</td>
-                  <td className="px-4 py-3 text-sm text-gray-500">{race.concurrent_viewers}</td>
-                  <td className="px-4 py-3 text-sm text-gray-500">{race.unique_viewers}</td>
-                  <td className="px-4 py-3 text-sm text-gray-500">{race.authenticated_viewers}</td>
-                  <td className="px-4 py-3 text-sm text-gray-500">{race.anonymous_viewers}</td>
+                  <td className="px-4 py-3 text-sm text-foreground">{race.race_name}</td>
+                  <td className="px-4 py-3 text-sm text-muted-foreground">{race.concurrent_viewers}</td>
+                  <td className="px-4 py-3 text-sm text-muted-foreground">{race.unique_viewers}</td>
+                  <td className="px-4 py-3 text-sm text-muted-foreground">{race.authenticated_viewers}</td>
+                  <td className="px-4 py-3 text-sm text-muted-foreground">{race.anonymous_viewers}</td>
                 </tr>
               ))}
             </tbody>
@@ -123,28 +123,28 @@ export default function RechartsCharts({
         </div>
 
         <div className="mt-6 overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+          <table className="min-w-full divide-y divide-border">
+            <thead className="bg-muted">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Race</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total Hours</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total Minutes</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Sessions</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Users</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Race</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Total Hours</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Total Minutes</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Sessions</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Users</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-card divide-y divide-border">
               {watchTimeAnalytics
                 .filter((wt) => wt.total_minutes > 0)
                 .map((wt) => (
                   <tr key={wt.race_id}>
-                    <td className="px-4 py-3 text-sm text-gray-900">{wt.race_name}</td>
-                    <td className="px-4 py-3 text-sm text-gray-500">
+                    <td className="px-4 py-3 text-sm text-foreground">{wt.race_name}</td>
+                    <td className="px-4 py-3 text-sm text-muted-foreground">
                       {Math.round(wt.total_minutes / 60 * 10) / 10}
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-500">{Math.round(wt.total_minutes)}</td>
-                    <td className="px-4 py-3 text-sm text-gray-500">{wt.session_count}</td>
-                    <td className="px-4 py-3 text-sm text-gray-500">{wt.user_count}</td>
+                    <td className="px-4 py-3 text-sm text-muted-foreground">{Math.round(wt.total_minutes)}</td>
+                    <td className="px-4 py-3 text-sm text-muted-foreground">{wt.session_count}</td>
+                    <td className="px-4 py-3 text-sm text-muted-foreground">{wt.user_count}</td>
                   </tr>
                 ))}
             </tbody>
@@ -174,34 +174,34 @@ export default function RechartsCharts({
         </div>
 
         <div className="mt-6 overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+          <table className="min-w-full divide-y divide-border">
+            <thead className="bg-muted">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Race</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Month</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total Revenue</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Platform Share</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Organizer Share</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Watch Minutes</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Race</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Month</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Total Revenue</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Platform Share</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Organizer Share</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Watch Minutes</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-card divide-y divide-border">
               {revenueAnalytics.map((rev) => (
                 <tr key={rev.id}>
-                  <td className="px-4 py-3 text-sm text-gray-900">{rev.race_name}</td>
-                  <td className="px-4 py-3 text-sm text-gray-500">
+                  <td className="px-4 py-3 text-sm text-foreground">{rev.race_name}</td>
+                  <td className="px-4 py-3 text-sm text-muted-foreground">
                     {rev.year}-{String(rev.month).padStart(2, '0')}
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-500">
+                  <td className="px-4 py-3 text-sm text-muted-foreground">
                     ${rev.total_revenue_dollars.toFixed(2)}
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-500">
+                  <td className="px-4 py-3 text-sm text-muted-foreground">
                     ${rev.platform_share_dollars.toFixed(2)}
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-500">
+                  <td className="px-4 py-3 text-sm text-muted-foreground">
                     ${rev.organizer_share_dollars.toFixed(2)}
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-500">
+                  <td className="px-4 py-3 text-sm text-muted-foreground">
                     {Math.round(rev.total_watch_minutes)}
                   </td>
                 </tr>

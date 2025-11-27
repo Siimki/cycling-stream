@@ -61,7 +61,7 @@ export function Navigation({ variant = "full" }: NavigationProps) {
                 <Link href="/">
                   <Button variant="ghost" className="text-foreground text-sm font-semibold h-9 px-4 rounded-lg bg-muted/50">
                     Live
-                    <span className="ml-2 w-2 h-2 rounded-full bg-red-500 animate-live-pulse" />
+                    <span className="ml-2 w-2 h-2 rounded-full bg-live animate-live-pulse" />
                   </Button>
                 </Link>
                 <Link href="/">

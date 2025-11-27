@@ -68,7 +68,7 @@ export default function SettingsPage() {
               )}
 
               {success && (
-                <div className="mb-4 p-3 bg-green-500/10 border border-green-500/20 rounded-md text-green-600 dark:text-green-400 text-sm">
+                <div className="mb-4 p-3 bg-success/10 border border-success/20 rounded-md text-success text-sm">
                   {success}
                 </div>
               )}

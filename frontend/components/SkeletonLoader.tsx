@@ -5,7 +5,7 @@ interface SkeletonLoaderProps {
 export function SkeletonBox({ className = '' }: SkeletonLoaderProps) {
   return (
     <div
-      className={`animate-pulse bg-gray-200 rounded ${className}`}
+      className={`animate-pulse bg-muted rounded ${className}`}
       aria-hidden="true"
     ></div>
   );
@@ -13,7 +13,7 @@ export function SkeletonBox({ className = '' }: SkeletonLoaderProps) {
 
 export function RaceCardSkeleton() {
   return (
-    <div className="bg-white rounded-lg shadow-md p-6">
+    <div className="bg-card rounded-lg shadow-md p-6">
       <SkeletonBox className="h-6 w-3/4 mb-4" />
       <SkeletonBox className="h-4 w-full mb-2" />
       <SkeletonBox className="h-4 w-2/3 mb-4" />
@@ -27,7 +27,7 @@ export function RaceCardSkeleton() {
 
 export function RaceDetailSkeleton() {
   return (
-    <div className="bg-white rounded-lg shadow-md p-8">
+    <div className="bg-card rounded-lg shadow-md p-8">
       <SkeletonBox className="h-8 w-2/3 mb-4" />
       <SkeletonBox className="h-4 w-full mb-2" />
       <SkeletonBox className="h-4 w-5/6 mb-6" />

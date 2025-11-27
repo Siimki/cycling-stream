@@ -24,7 +24,7 @@ export const VideoOverlay = memo(function VideoOverlay({ showControls }: VideoOv
           showControls ? 'opacity-100' : 'opacity-0'
         }`}
       >
-        <div className="flex items-center gap-1.5 bg-red-600 pl-1.5 pr-2 py-0.5 rounded text-white">
+        <div className="flex items-center gap-1.5 bg-live pl-1.5 pr-2 py-0.5 rounded text-white">
           <span className="w-1.5 h-1.5 rounded-full bg-white animate-live-pulse" />
           <span className="text-xs font-bold uppercase tracking-wide">Live</span>
         </div>

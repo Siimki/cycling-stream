@@ -94,9 +94,9 @@ export default function Chat() {
           <span className="text-base font-semibold text-foreground tracking-tight">Stream Chat</span>
           <div className="flex items-center gap-2">
             {isConnected ? (
-                <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse shadow-glow-green" title="Connected"></span>
+                <span className="w-2 h-2 bg-connected rounded-full animate-pulse shadow-glow-green" title="Connected"></span>
             ) : (
-                <span className="w-2 h-2 bg-red-400 rounded-full" title="Disconnected"></span>
+                <span className="w-2 h-2 bg-disconnected rounded-full" title="Disconnected"></span>
             )}
           </div>
         </div>

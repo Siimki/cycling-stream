@@ -163,10 +163,10 @@ export default function LeaderboardPage() {
                               <Trophy
                                 className={`w-5 h-5 ${
                                   rank === 1
-                                    ? 'text-yellow-500'
+                                    ? 'text-warning'
                                     : rank === 2
-                                    ? 'text-gray-400'
-                                    : 'text-amber-600'
+                                    ? 'text-muted-foreground'
+                                    : 'text-warning'
                                 }`}
                               />
                             ) : (
