@@ -29,6 +29,11 @@ function RaceCard({ race }: RaceCardProps) {
             )}
           </div>
           <div className="flex items-center gap-2">
+            {race.requires_login && (
+              <span className="px-2 py-1 bg-primary/20 text-primary rounded-md text-xs sm:text-sm font-semibold whitespace-nowrap">
+                🔒 Login Required
+              </span>
+            )}
             {race.is_free ? (
               <span className="px-2 py-1 bg-primary/20 text-primary rounded-md text-xs sm:text-sm font-semibold whitespace-nowrap">
                 Free

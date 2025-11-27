@@ -63,6 +63,15 @@ func (h *RaceHandler) GetRaceStream(c *fiber.Ctx) error {
 		return nil
 	}
 
+	// Check if race requires login
+	if race.RequiresLogin {
+		userID, ok := requireUserID(c, "Authentication required to access this stream")
+		if !ok {
+			return nil
+		}
+		_ = userID // User ID is validated, continue
+	}
+
 	// Check if user has access (if race is paid)
 		if !race.IsFree {
 			userID, ok := c.Locals("user_id").(string)

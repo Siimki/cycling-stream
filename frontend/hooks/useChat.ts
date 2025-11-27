@@ -6,6 +6,7 @@ import { ChatMessage } from '@/lib/api';
 import { WS_URL } from '@/lib/config';
 import { WEBSOCKET_PING_INTERVAL_MS, WEBSOCKET_RECONNECT_DELAY_MS, WEBSOCKET_MAX_RECONNECT_DELAY_MS } from '@/constants/intervals';
 import { createContextLogger } from '@/lib/logger';
+import { useAuth } from '@/contexts/AuthContext';
 
 const logger = createContextLogger('Chat');
 
@@ -34,6 +35,10 @@ export function useChat(raceId: string, enabled: boolean): UseChatReturn {
   
   // This state is used to force a reconnection
   const [reconnectTrigger, setReconnectTrigger] = useState(0);
+  
+  // Use AuthContext to detect user changes (more reliable than polling)
+  const { user, token } = useAuth();
+  const userIdRef = useRef<string | null>(user?.id || null);
 
   // Helper to set error with optional delay
   const setChatError = useCallback((msg: string | null, delayMs: number = 0) => {
@@ -63,6 +68,36 @@ export function useChat(raceId: string, enabled: boolean): UseChatReturn {
     };
   }, []);
 
+  // Watch for user changes (when user logs in/out or switches accounts)
+  useEffect(() => {
+    const currentUserId = user?.id || null;
+    const previousUserId = userIdRef.current;
+
+    // If user ID changed, we need to reconnect
+    if (currentUserId !== previousUserId) {
+      logger.debug('User changed, reconnecting WebSocket', { 
+        previousUserId, 
+        currentUserId 
+      });
+      
+      userIdRef.current = currentUserId;
+      
+      // Clear messages when user changes (different user = different chat context)
+      setMessages([]);
+      
+      // Close existing connection if any
+      if (wsRef.current && wsRef.current.readyState !== WebSocket.CLOSED) {
+        wsRef.current.onclose = null; // Prevent automatic reconnection
+        wsRef.current.close(1000, 'User changed');
+        wsRef.current = null;
+        setIsConnected(false);
+      }
+      
+      // Force reconnection by updating reconnectTrigger
+      setReconnectTrigger(c => c + 1);
+    }
+  }, [user?.id, token]);
+
   useEffect(() => {
     if (!enabled || !raceId) {
       return;
@@ -78,13 +113,21 @@ export function useChat(raceId: string, enabled: boolean): UseChatReturn {
     const connect = () => {
       if (isCleanup) return;
 
+      // Close existing connection if any (e.g., when token changes)
+      if (wsRef.current && wsRef.current.readyState !== WebSocket.CLOSED) {
+        logger.debug('Closing existing WebSocket connection before reconnecting');
+        wsRef.current.onclose = null; // Prevent reconnection logic
+        wsRef.current.close(1000, 'Reconnecting with new token');
+        wsRef.current = null;
+      }
+
       try {
         const token = getToken();
         const wsUrl = token
           ? `${WS_URL}/races/${raceId}/chat/ws?token=${encodeURIComponent(token)}`
           : `${WS_URL}/races/${raceId}/chat/ws`;
 
-        logger.debug('Connecting to chat:', { raceId });
+        logger.debug('Connecting to chat:', { raceId, hasToken: !!token });
         ws = new WebSocket(wsUrl);
         wsRef.current = ws;
 
@@ -187,14 +230,21 @@ export function useChat(raceId: string, enabled: boolean): UseChatReturn {
         ws.onmessage = null;
         ws.onopen = null;
         ws.onerror = null;
-        ws.close();
+        ws.close(1000, 'Component unmounting'); // Normal closure
+      }
+      if (wsRef.current) {
+        wsRef.current.onclose = null;
+        wsRef.current.onmessage = null;
+        wsRef.current.onopen = null;
+        wsRef.current.onerror = null;
+        wsRef.current.close(1000, 'Component unmounting');
       }
       wsRef.current = null;
       clearInterval(pingInterval);
       clearTimeout(reconnectTimeout);
       // Note: We don't clear errorTimeout here as it's handled by the parent effect
     };
-  }, [raceId, enabled, reconnectTrigger, setChatError]);
+  }, [raceId, enabled, reconnectTrigger, setChatError, token]);
 
   const sendMessage = useCallback((message: string) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {

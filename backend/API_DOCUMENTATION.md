@@ -87,6 +87,11 @@ Get a list of all races.
     "category": "Grand Tour",
     "is_free": false,
     "price_cents": 999,
+    "requires_login": false,
+    "stage_name": "Stage 17",
+    "stage_type": "Mountain",
+    "elevation_meters": 4800,
+    "stage_length_km": 166,
     "created_at": "2024-01-01T00:00:00Z",
     "updated_at": "2024-01-01T00:00:00Z"
   }
@@ -116,6 +121,11 @@ Get details for a specific race.
   "category": "Grand Tour",
   "is_free": false,
   "price_cents": 999,
+  "requires_login": false,
+  "stage_name": "Stage 17",
+  "stage_type": "Mountain",
+  "elevation_meters": 4800,
+  "stage_length_km": 166,
   "created_at": "2024-01-01T00:00:00Z",
   "updated_at": "2024-01-01T00:00:00Z"
 }
@@ -220,12 +230,12 @@ Authenticate and get a JWT token.
 
 **GET** `/races/:id/stream`
 
-Get stream information for a race. Requires authentication for paid races.
+Get stream information for a race. Requires authentication for paid races and races with `requires_login = true`.
 
 **Parameters:**
 - `id` (path, required) - Race UUID
 
-**Authentication:** Optional (required for paid races)
+**Authentication:** Optional (required for paid races or races with `requires_login = true`)
 
 **Response:**
 ```json
@@ -239,9 +249,11 @@ Get stream information for a race. Requires authentication for paid races.
 ```
 
 **Error Responses:**
-- `401` - Authentication required for paid race
+- `401` - Authentication required (for paid races or races with `requires_login = true`)
 - `403` - Payment required to access this race
 - `404` - Stream not found for this race
+
+**Note:** If a race has `requires_login = true`, authentication is required to access the stream, even if the race is free. The `401` error will be returned with the message "Authentication required to access this stream".
 
 ---
 

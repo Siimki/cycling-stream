@@ -12,6 +12,7 @@ type Race struct {
 	Category           *string   `json:"category,omitempty" db:"category"`
 	IsFree             bool      `json:"is_free" db:"is_free"`
 	PriceCents         int       `json:"price_cents" db:"price_cents"`
+	RequiresLogin      bool      `json:"requires_login" db:"requires_login"`
 	StageName          *string   `json:"stage_name,omitempty" db:"stage_name"`
 	StageType          *string   `json:"stage_type,omitempty" db:"stage_type"`
 	ElevationMeters    *int      `json:"elevation_meters,omitempty" db:"elevation_meters"`

@@ -33,6 +33,7 @@ type CreateRaceRequest struct {
 	Category           *string    `json:"category"`
 	IsFree             bool       `json:"is_free"`
 	PriceCents         int        `json:"price_cents"`
+	RequiresLogin      *bool      `json:"requires_login"`
 	StageName          *string    `json:"stage_name"`
 	StageType          *string    `json:"stage_type"`
 	ElevationMeters    *int       `json:"elevation_meters"`
@@ -106,6 +107,11 @@ func (h *AdminHandler) CreateRace(c *fiber.Ctx) error {
 		})
 	}
 
+	requiresLogin := false
+	if req.RequiresLogin != nil {
+		requiresLogin = *req.RequiresLogin
+	}
+
 	race := &models.Race{
 		Name:               req.Name,
 		Description:        req.Description,
@@ -115,6 +121,7 @@ func (h *AdminHandler) CreateRace(c *fiber.Ctx) error {
 		Category:           req.Category,
 		IsFree:             req.IsFree,
 		PriceCents:         req.PriceCents,
+		RequiresLogin:      requiresLogin,
 		StageName:          req.StageName,
 		StageType:          req.StageType,
 		ElevationMeters:    req.ElevationMeters,
@@ -199,6 +206,24 @@ func (h *AdminHandler) UpdateRace(c *fiber.Ctx) error {
 		})
 	}
 
+	// Load existing race to preserve requires_login if not provided
+	existingRace, err := h.raceRepo.GetByID(id)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Failed to get race",
+		})
+	}
+	if existingRace == nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+			"error": "Race not found",
+		})
+	}
+
+	requiresLogin := existingRace.RequiresLogin
+	if req.RequiresLogin != nil {
+		requiresLogin = *req.RequiresLogin
+	}
+
 	race := &models.Race{
 		ID:                 id,
 		Name:               req.Name,
@@ -209,6 +234,7 @@ func (h *AdminHandler) UpdateRace(c *fiber.Ctx) error {
 		Category:           req.Category,
 		IsFree:             req.IsFree,
 		PriceCents:         req.PriceCents,
+		RequiresLogin:      requiresLogin,
 		StageName:          req.StageName,
 		StageType:          req.StageType,
 		ElevationMeters:    req.ElevationMeters,

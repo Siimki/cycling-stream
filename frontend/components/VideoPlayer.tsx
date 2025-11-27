@@ -10,9 +10,10 @@ import { VIDEO_CONTROLS_HIDE_DELAY_MS } from '@/constants/intervals';
 interface VideoPlayerProps {
   streamUrl?: string;
   status: string;
+  requiresLogin?: boolean;
 }
 
-export default function VideoPlayer({ streamUrl, status }: VideoPlayerProps) {
+export default function VideoPlayer({ streamUrl, status, requiresLogin }: VideoPlayerProps) {
   const [showControls, setShowControls] = useState(false);
   const [showQualityMenu, setShowQualityMenu] = useState(false);
   const [showSpeedMenu, setShowSpeedMenu] = useState(false);
@@ -99,6 +100,23 @@ export default function VideoPlayer({ streamUrl, status }: VideoPlayerProps) {
   }, []);
 
   if (status !== 'live' || !streamUrl) {
+    // Show login-required message if race requires login
+    if (requiresLogin) {
+      return (
+        <div className="bg-card aspect-video flex items-center justify-center rounded-lg relative overflow-hidden border border-border">
+          <div className="absolute inset-0 bg-gradient-to-br from-background to-card"></div>
+          <div className="relative text-center text-foreground z-10 px-4">
+            <div className="text-6xl mb-4">🔒</div>
+            <p className="text-2xl font-semibold mb-2">Stream is Only for Registered Users</p>
+            <p className="text-muted-foreground">
+              This stream is only available for logged-in users. Please log in to watch.
+            </p>
+          </div>
+        </div>
+      );
+    }
+    
+    // Default offline message for races that don't require login
     return (
       <div className="bg-card aspect-video flex items-center justify-center rounded-lg relative overflow-hidden border border-border">
         <div className="absolute inset-0 bg-gradient-to-br from-background to-card"></div>

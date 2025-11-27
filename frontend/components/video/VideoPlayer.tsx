@@ -12,6 +12,7 @@ interface VideoPlayerProps {
   status: string;
   streamType?: string;
   sourceId?: string;
+  requiresLogin?: boolean; // Kept for backward compatibility but not used
 }
 
 export default function VideoPlayer({ streamUrl, status, streamType, sourceId }: VideoPlayerProps) {
@@ -120,6 +121,8 @@ export default function VideoPlayer({ streamUrl, status, streamType, sourceId }:
   }
 
   if (status !== 'live' || !streamUrl) {
+    // Note: Authentication checks are handled by AuthRequiredWrapper
+    // This component only shows the stream or offline message
     return (
       <div className="bg-card aspect-video flex items-center justify-center rounded-lg relative overflow-hidden border border-border">
         <div className="absolute inset-0 bg-gradient-to-br from-background to-card"></div>

@@ -11,6 +11,7 @@ export interface Race {
   category?: string;
   is_free: boolean;
   price_cents: number;
+  requires_login?: boolean;
   stage_name?: string;
   stage_type?: string;
   elevation_meters?: number;
@@ -59,8 +60,16 @@ export async function getRace(id: string): Promise<Race> {
   return fetchAPI<Race>(`/races/${id}`);
 }
 
-export async function getRaceStream(id: string): Promise<StreamResponse> {
-  return fetchAPI<StreamResponse>(`/races/${id}/stream`);
+export async function getRaceStream(id: string, suppressAuthErrorLog = false): Promise<StreamResponse> {
+  try {
+    return await fetchAPI<StreamResponse>(`/races/${id}/stream`);
+  } catch (error: any) {
+    // If this is an expected 401 error and we're suppressing logs, re-throw without logging
+    if (suppressAuthErrorLog && error?.status === 401) {
+      throw error;
+    }
+    throw error;
+  }
 }
 
 export interface ChatMessage {

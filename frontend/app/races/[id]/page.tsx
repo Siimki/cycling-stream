@@ -79,6 +79,18 @@ export default async function RaceDetailPage({ params }: RaceDetailPageProps) {
                 <p className="text-foreground/95 text-sm sm:text-base mt-1">{race.category}</p>
               </div>
             )}
+            {race.stage_length_km && (
+              <div>
+                <h3 className="text-xs sm:text-sm font-semibold text-muted-foreground uppercase tracking-wider">Distance</h3>
+                <p className="text-foreground/95 text-sm sm:text-base mt-1">{race.stage_length_km} km</p>
+              </div>
+            )}
+            {race.elevation_meters && (
+              <div>
+                <h3 className="text-xs sm:text-sm font-semibold text-muted-foreground uppercase tracking-wider">Elevation</h3>
+                <p className="text-foreground/95 text-sm sm:text-base mt-1">{race.elevation_meters.toLocaleString()} m</p>
+              </div>
+            )}
             <div>
               <h3 className="text-xs sm:text-sm font-semibold text-muted-foreground uppercase tracking-wider">Price</h3>
               <p className="text-foreground/95 text-sm sm:text-base mt-1">
@@ -89,6 +101,16 @@ export default async function RaceDetailPage({ params }: RaceDetailPageProps) {
                 )}
               </p>
             </div>
+            {race.requires_login && (
+              <div>
+                <h3 className="text-xs sm:text-sm font-semibold text-muted-foreground uppercase tracking-wider">Access</h3>
+                <p className="text-foreground/95 text-sm sm:text-base mt-1">
+                  <span className="px-2 py-1 bg-primary/20 text-primary rounded-md text-xs sm:text-sm font-semibold">
+                    Login Required
+                  </span>
+                </p>
+              </div>
+            )}
           </div>
 
           <Link href={`/races/${race.id}/watch`}>
