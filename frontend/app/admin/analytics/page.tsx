@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
@@ -29,8 +29,6 @@ const RechartsCharts = dynamic(
   }
 );
 
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
-
 export default function AnalyticsPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
@@ -41,16 +39,8 @@ export default function AnalyticsPage() {
   const [selectedYear, setSelectedYear] = useState<number | undefined>(undefined);
   const [selectedMonth, setSelectedMonth] = useState<number | undefined>(undefined);
 
-  useEffect(() => {
-    const token = localStorage.getItem('admin_token');
-    if (!token) {
-      router.push('/admin/login');
-      return;
-    }
-    fetchAllAnalytics();
-  }, [router, selectedYear, selectedMonth]);
-
-  const fetchAllAnalytics = async () => {
+  // Memoize fetchAllAnalytics to avoid infinite loops and satisfy useEffect dependency
+  const fetchAllAnalytics = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
@@ -69,7 +59,16 @@ export default function AnalyticsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedYear, selectedMonth]);
+
+  useEffect(() => {
+    const token = localStorage.getItem('admin_token');
+    if (!token) {
+      router.push('/admin/login');
+      return;
+    }
+    fetchAllAnalytics();
+  }, [router, fetchAllAnalytics]);
 
   const handleLogout = () => {
     localStorage.removeItem('admin_token');

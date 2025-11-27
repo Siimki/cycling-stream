@@ -13,11 +13,8 @@ export function PointsDisplay() {
   const { isAuthenticated } = useAuth()
   const { points, watchTime } = useHudStats()
 
-  if (!isAuthenticated) {
-    return null
-  }
-
   // Tier calculation - memoized to avoid recalculation on every render
+  // Must be called before any conditional returns to follow React Hooks rules
   const { currentTier, nextTier, progressToNext } = useMemo(() => {
     const tiers = POINTS_TIERS
     const current = tiers.reduce((acc, tier) => (points >= tier.min ? tier : acc), tiers[0])
@@ -25,6 +22,10 @@ export function PointsDisplay() {
     const progress = next ? ((points - current.min) / (next.min - current.min)) * 100 : 100
     return { currentTier: current, nextTier: next, progressToNext: progress }
   }, [points])
+
+  if (!isAuthenticated) {
+    return null
+  }
 
   return (
     <div className="relative flex flex-col w-full bg-card/80 backdrop-blur-sm border-t border-border/30 overflow-hidden min-h-[4.5rem]">

@@ -56,7 +56,7 @@ export default function ContactPage() {
       setTimeout(() => {
         setStatus('idle');
       }, 5000);
-    } catch (error) {
+    } catch {
       setStatus('error');
       setErrorMessage('Failed to send message. Please try again later.');
     }

@@ -40,25 +40,7 @@ export default function VideoPlayer({ streamUrl, status, streamType, sourceId }:
     toggleFullscreen,
   } = useVideoPlayer(streamUrl, status);
 
-  // YouTube Player
-  if (status === 'live' && streamType === 'youtube' && sourceId) {
-    return (
-      <div className="aspect-video w-full h-full bg-black rounded-lg overflow-hidden border border-border">
-         <iframe
-            width="100%"
-            height="100%"
-            src={`https://www.youtube.com/embed/${sourceId}?autoplay=1`}
-            title="YouTube video player"
-            frameBorder="0"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-            allowFullScreen
-            className="w-full h-full"
-          ></iframe>
-      </div>
-    );
-  }
-
-  // Keyboard shortcuts
+  // Keyboard shortcuts - must be called before any conditional returns
   useVideoKeyboardShortcuts({
     videoRef,
     togglePlay,
@@ -66,7 +48,7 @@ export default function VideoPlayer({ streamUrl, status, streamType, sourceId }:
     toggleMute,
   });
 
-  // Auto-hide controls
+  // Auto-hide controls - must be called before any conditional returns
   useEffect(() => {
     const resetControlsTimeout = () => {
       if (controlsTimeoutRef.current) {
@@ -97,6 +79,7 @@ export default function VideoPlayer({ streamUrl, status, streamType, sourceId }:
     };
   }, [containerRef, videoRef]);
 
+  // Callbacks - must be called before any conditional returns
   const handlePlaybackSpeedChangeWithClose = useCallback(
     (speed: number) => {
       handlePlaybackSpeedChange(speed);
@@ -117,6 +100,24 @@ export default function VideoPlayer({ streamUrl, status, streamType, sourceId }:
     setShowQualityMenu(false);
     setShowSpeedMenu(false);
   }, []);
+
+  // YouTube Player
+  if (status === 'live' && streamType === 'youtube' && sourceId) {
+    return (
+      <div className="aspect-video w-full h-full bg-black rounded-lg overflow-hidden border border-border">
+         <iframe
+            width="100%"
+            height="100%"
+            src={`https://www.youtube.com/embed/${sourceId}?autoplay=1`}
+            title="YouTube video player"
+            frameBorder="0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            allowFullScreen
+            className="w-full h-full"
+          ></iframe>
+      </div>
+    );
+  }
 
   if (status !== 'live' || !streamUrl) {
     return (
