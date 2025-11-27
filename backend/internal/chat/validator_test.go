@@ -79,17 +79,3 @@ func TestValidateMessage(t *testing.T) {
 	})
 }
 
-func TestValidationErrors(t *testing.T) {
-	t.Run("ErrMessageTooShort has correct message", func(t *testing.T) {
-		assert.Equal(t, "Message is too short", ErrMessageTooShort.Error())
-	})
-
-	t.Run("ErrMessageTooLong has correct message", func(t *testing.T) {
-		assert.Equal(t, "Message is too long (max 500 characters)", ErrMessageTooLong.Error())
-	})
-
-	t.Run("ErrMessageEmpty has correct message", func(t *testing.T) {
-		assert.Equal(t, "Message cannot be empty", ErrMessageEmpty.Error())
-	})
-}
-

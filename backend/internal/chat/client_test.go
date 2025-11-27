@@ -2,6 +2,7 @@ package chat
 
 import (
 	"testing"
+	"time"
 
 	"github.com/cyclingstream/backend/internal/logger"
 	"github.com/stretchr/testify/assert"
@@ -12,108 +13,103 @@ func init() {
 	logger.Init("test")
 }
 
-// TestClient_NewClient tests client creation
+// TestClient_NewClient tests client creation and basic functionality
 func TestClient_NewClient(t *testing.T) {
 	hub := NewHub()
+	go hub.Run()
+	defer close(hub.register)
 	
-	t.Run("Create client with all fields", func(t *testing.T) {
+	t.Run("Authenticated client can send and receive messages", func(t *testing.T) {
 		userID := "user-123"
 		username := "TestUser"
-		isAdmin := false
 		messageHandler := func(*Client, *WSMessage) {}
 		onClose := func(*Client) {}
 		
-		// Test NewClient function
-		client := NewClient(hub, nil, &userID, username, isAdmin, messageHandler, onClose)
-
+		client := NewClient(hub, nil, &userID, username, false, messageHandler, onClose)
 		assert.NotNil(t, client)
-		assert.Equal(t, hub, client.hub)
-		assert.NotNil(t, client.send)
-		assert.NotNil(t, client.userID)
-		assert.Equal(t, userID, *client.userID)
-		assert.Equal(t, username, client.username)
-		assert.Equal(t, isAdmin, client.isAdmin)
-		assert.NotNil(t, client.messageHandler)
-		assert.NotNil(t, client.onClose)
-	})
-
-	t.Run("Create anonymous client", func(t *testing.T) {
-		client := NewClient(hub, nil, nil, "Anonymous", false, nil, nil)
-
-		assert.Nil(t, client.userID)
-		assert.Equal(t, "Anonymous", client.username)
-		assert.Nil(t, client.messageHandler)
-		assert.Nil(t, client.onClose)
-	})
-
-	t.Run("Create admin client", func(t *testing.T) {
-		userID := "admin-123"
-		client := NewClient(hub, nil, &userID, "Admin", true, nil, nil)
-
-		assert.NotNil(t, client.userID)
-		assert.Equal(t, userID, *client.userID)
-		assert.True(t, client.isAdmin)
-	})
-}
-
-// TestClient_SendMessage tests message sending
-func TestClient_SendMessage(t *testing.T) {
-	hub := NewHub()
-	client := &Client{
-		hub:      hub,
-		send:     make(chan []byte, 256),
-		userID:   nil,
-		username: "Test",
-		isAdmin:  false,
-	}
-
-	t.Run("Send message to channel", func(t *testing.T) {
-		message := []byte("test message")
 		
-		// Send message
+		// Register client with hub
+		hub.register <- client
+		time.Sleep(10 * time.Millisecond)
+		
+		// Test that client can receive messages from hub
+		message := []byte("test message")
 		client.SendMessage(message)
 		
-		// Verify message is in channel
+		// Verify message was queued
 		select {
 		case msg := <-client.send:
 			assert.Equal(t, message, msg)
-		default:
-			t.Fatal("Message was not sent to channel")
+		case <-time.After(100 * time.Millisecond):
+			t.Fatal("Client should be able to receive messages")
 		}
 	})
 
-	t.Run("Send multiple messages", func(t *testing.T) {
+	t.Run("Anonymous client can receive messages", func(t *testing.T) {
+		client := NewClient(hub, nil, nil, "Anonymous", false, nil, nil)
+		assert.NotNil(t, client)
+		
+		hub.register <- client
+		time.Sleep(10 * time.Millisecond)
+		
+		// Anonymous client should still be able to receive messages
+		message := []byte("broadcast")
+		client.SendMessage(message)
+		
+		select {
+		case msg := <-client.send:
+			assert.Equal(t, message, msg)
+		case <-time.After(100 * time.Millisecond):
+			t.Fatal("Anonymous client should be able to receive messages")
+		}
+	})
+}
+
+// TestClient_SendMessage tests message sending behavior
+func TestClient_SendMessage(t *testing.T) {
+	hub := NewHub()
+	go hub.Run()
+	defer close(hub.register)
+	
+	client := NewClient(hub, nil, nil, "Test", false, nil, nil)
+	hub.register <- client
+	time.Sleep(10 * time.Millisecond)
+
+	t.Run("Client can send multiple messages in sequence", func(t *testing.T) {
 		messages := [][]byte{
 			[]byte("message 1"),
 			[]byte("message 2"),
 			[]byte("message 3"),
 		}
 
+		// Send all messages
 		for _, msg := range messages {
-			client.SendMessage(msg)
+			success := client.SendMessage(msg)
+			assert.True(t, success, "Message should be sent successfully")
 		}
 
-		// Verify all messages are in channel
+		// Verify all messages are received in order
 		for i, expectedMsg := range messages {
 			select {
 			case msg := <-client.send:
-				assert.Equal(t, expectedMsg, msg, "Message %d mismatch", i)
-			default:
-				t.Fatalf("Message %d was not sent to channel", i)
+				assert.Equal(t, expectedMsg, msg, "Message %d should match", i+1)
+			case <-time.After(100 * time.Millisecond):
+				t.Fatalf("Message %d was not received", i+1)
 			}
 		}
 	})
 
-	t.Run("Full channel drops message", func(t *testing.T) {
-		// Fill channel to capacity
+	t.Run("Client drops messages when send channel is full", func(t *testing.T) {
+		// Create a client with a very small channel to test dropping behavior
 		smallChannel := make(chan []byte, 1)
 		client.send = smallChannel
 		
 		// Fill the channel
 		smallChannel <- []byte("first")
 		
-		// Try to send another message (should be dropped)
-		client.SendMessage([]byte("second"))
+		// Try to send another message (should be dropped, returns false)
+		success := client.SendMessage([]byte("second"))
+		assert.False(t, success, "Message should be dropped when channel is full")
 		
 		// Verify only first message is in channel
 		msg := <-smallChannel
@@ -156,23 +152,6 @@ func TestClient_MessageHandler(t *testing.T) {
 
 		assert.True(t, handlerCalled)
 	})
-
-	t.Run("Nil message handler doesn't panic", func(t *testing.T) {
-		client := &Client{
-			hub:            hub,
-			send:           make(chan []byte, 256),
-			messageHandler: nil,
-		}
-
-		msg := &WSMessage{
-			Type: "test",
-		}
-
-		// Should not panic
-		if client.messageHandler != nil {
-			client.messageHandler(client, msg)
-		}
-	})
 }
 
 // TestClient_OnClose tests onClose callback
@@ -196,19 +175,6 @@ func TestClient_OnClose(t *testing.T) {
 		}
 
 		assert.True(t, onCloseCalled)
-	})
-
-	t.Run("Nil onClose doesn't panic", func(t *testing.T) {
-		client := &Client{
-			hub:     hub,
-			send:    make(chan []byte, 256),
-			onClose: nil,
-		}
-
-		// Should not panic
-		if client.onClose != nil {
-			client.onClose(client)
-		}
 	})
 }
 

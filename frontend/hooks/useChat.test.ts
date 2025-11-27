@@ -355,5 +355,103 @@ describe('useChat', () => {
       expect(mockWebSocketInstances.length).toBeGreaterThan(1);
     });
   });
+
+  it('should handle malformed WebSocket messages gracefully', async () => {
+    const { result } = renderHook(() => useChat(raceId, enabled));
+
+    await waitFor(() => {
+      expect(result.current.isConnected).toBe(true);
+    });
+
+    const mock = getLatestMockWebSocket();
+
+    // Simulate malformed messages
+    act(() => {
+      if (mock) {
+        mock.simulateMessage('not valid json');
+        mock.simulateMessage('{"incomplete":');
+        mock.simulateMessage('{"type": "message", "invalid":}');
+      }
+    });
+
+    // Should not crash, error should be set or messages ignored
+    await waitFor(() => {
+      // Either error is set or messages are safely ignored
+      expect(result.current.error !== null || result.current.messages.length === 0).toBe(true);
+    });
+  });
+
+  it('should cleanup on unmount during connection', async () => {
+    const { result, unmount } = renderHook(() => useChat(raceId, enabled));
+
+    // Don't wait for connection to complete
+    const mock = getLatestMockWebSocket();
+
+    // Unmount immediately
+    unmount();
+
+    // Verify connection is closed or will be closed
+    await waitFor(() => {
+      if (mock) {
+        expect(mock.readyState === MockWebSocket.CLOSED || mock.readyState === MockWebSocket.CLOSING).toBe(true);
+      }
+    }, { timeout: 500 });
+  });
+
+  it('should handle rapid message sending without errors', async () => {
+    const { result } = renderHook(() => useChat(raceId, enabled));
+
+    await waitFor(() => {
+      expect(result.current.isConnected).toBe(true);
+    });
+
+    const mock = getLatestMockWebSocket();
+
+    // Send multiple messages rapidly
+    act(() => {
+      for (let i = 0; i < 10; i++) {
+        result.current.sendMessage(`Message ${i}`);
+      }
+    });
+
+    await waitFor(() => {
+      const sent = mock?.getSentMessages() || [];
+      expect(sent.length).toBeGreaterThan(0);
+    });
+
+    // Should not have errors
+    expect(result.current.error).toBeNull();
+  });
+
+  it('should handle network failure and recovery', async () => {
+    const { result } = renderHook(() => useChat(raceId, enabled));
+
+    await waitFor(() => {
+      expect(result.current.isConnected).toBe(true);
+    });
+
+    const mock = getLatestMockWebSocket();
+
+    // Simulate network error
+    act(() => {
+      if (mock) {
+        mock.simulateError();
+      }
+    });
+
+    await waitFor(() => {
+      expect(result.current.error).toBeTruthy();
+    });
+
+    // Attempt reconnection
+    act(() => {
+      result.current.reconnect();
+    });
+
+    // Should attempt to reconnect
+    await waitFor(() => {
+      expect(mockWebSocketInstances.length).toBeGreaterThan(1);
+    });
+  });
 });
 

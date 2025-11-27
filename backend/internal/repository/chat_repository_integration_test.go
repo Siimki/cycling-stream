@@ -225,5 +225,51 @@ func TestChatRepository_Integration(t *testing.T) {
 		assert.Equal(t, raceID2, messages2[0].RaceID)
 		assert.Equal(t, "Race 2 message", messages2[0].Message)
 	})
+
+	t.Run("Create message with invalid race ID is handled", func(t *testing.T) {
+		invalidRaceID := "00000000-0000-0000-0000-000000000000"
+		msg := &models.ChatMessage{
+			RaceID:   invalidRaceID,
+			UserID:   &userID,
+			Username: "Test User",
+			Message:  "Message for invalid race",
+		}
+
+		// Should either succeed (if foreign key constraint is not enforced)
+		// or fail gracefully (if constraint is enforced)
+		err := repo.Create(msg)
+		// Both outcomes are acceptable - the key is that it doesn't panic
+		if err != nil {
+			// If foreign key constraint is enforced, error is expected
+			assert.NotNil(t, err)
+		} else {
+			// If no constraint, message should be created
+			assert.NotEmpty(t, msg.ID)
+		}
+	})
+
+	t.Run("GetByRaceID with invalid UUID format is handled", func(t *testing.T) {
+		invalidRaceID := "not-a-valid-uuid"
+		messages, err := repo.GetByRaceID(invalidRaceID, 10, 0)
+
+		// Should either return empty array or error, but not panic
+		if err != nil {
+			assert.NotNil(t, err)
+		} else {
+			assert.Empty(t, messages)
+		}
+	})
+
+	t.Run("CountByRaceID with invalid UUID format is handled", func(t *testing.T) {
+		invalidRaceID := "not-a-valid-uuid"
+		count, err := repo.CountByRaceID(invalidRaceID)
+
+		// Should either return 0 or error, but not panic
+		if err != nil {
+			assert.NotNil(t, err)
+		} else {
+			assert.Equal(t, 0, count)
+		}
+	})
 }
 

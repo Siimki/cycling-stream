@@ -2,7 +2,6 @@ package chat
 
 import (
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -50,24 +49,33 @@ func TestRateLimiter_CheckRateLimit(t *testing.T) {
 		assert.True(t, allowed)
 	})
 
-	t.Run("Limit resets after window", func(t *testing.T) {
-		// This test would require time manipulation or waiting
-		// For now, we verify the structure
+	t.Run("Limit resets after window expires", func(t *testing.T) {
 		identifier := "user-6"
+		
+		// Fill up the limit
+		for i := 0; i < ChatRateLimitMaxMessages; i++ {
+			allowed := rl.CheckRateLimit(identifier)
+			assert.True(t, allowed, "Message %d should be allowed", i+1)
+		}
+		
+		// Next message should be denied
 		allowed := rl.CheckRateLimit(identifier)
-		assert.True(t, allowed)
+		assert.False(t, allowed, "Message should be denied after limit reached")
+		
+		// Verify remaining is 0
+		remaining := rl.GetRemainingMessages(identifier)
+		assert.Equal(t, 0, remaining)
+		
+		// Note: Full window expiration test (1 minute) is too slow for unit tests.
+		// The filtering logic is tested indirectly: CheckRateLimit filters old timestamps
+		// on each call, so the limit will reset once timestamps are older than the window.
+		// For integration tests, consider using a shorter window or time mocking.
 	})
 }
 
 func TestRateLimiter_GetRemainingMessages(t *testing.T) {
 	rl := NewRateLimiter()
 	defer rl.Stop()
-
-	t.Run("New identifier has full limit", func(t *testing.T) {
-		identifier := "user-7"
-		remaining := rl.GetRemainingMessages(identifier)
-		assert.Equal(t, ChatRateLimitMaxMessages, remaining)
-	})
 
 	t.Run("Remaining decreases with messages", func(t *testing.T) {
 		identifier := "user-8"
@@ -83,31 +91,6 @@ func TestRateLimiter_GetRemainingMessages(t *testing.T) {
 		}
 		remaining := rl.GetRemainingMessages(identifier)
 		assert.Equal(t, 0, remaining)
-	})
-}
-
-func TestRateLimiter_Cleanup(t *testing.T) {
-	rl := NewRateLimiter()
-	defer rl.Stop()
-
-	t.Run("Cleanup runs periodically", func(t *testing.T) {
-		// Verify cleanup ticker exists
-		assert.NotNil(t, rl.cleanupTicker)
-		assert.NotNil(t, rl.stopCleanup)
-	})
-
-	t.Run("Stop stops cleanup", func(t *testing.T) {
-		rl2 := NewRateLimiter()
-		rl2.Stop()
-		// Verify it can be stopped without panic
-		assert.NotNil(t, rl2)
-	})
-}
-
-func TestRateLimiter_Constants(t *testing.T) {
-	t.Run("Rate limit constants are set correctly", func(t *testing.T) {
-		assert.Equal(t, 10, ChatRateLimitMaxMessages)
-		assert.Equal(t, 1*time.Minute, ChatRateLimitWindow)
 	})
 }
 

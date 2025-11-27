@@ -4,23 +4,6 @@ import (
 	"testing"
 )
 
-// TestRevenueRepository_CalculateMonthlyRevenue tests the monthly revenue calculation
-// This is an integration test that requires a database connection
-func TestRevenueRepository_CalculateMonthlyRevenue(t *testing.T) {
-	// Skip if database is not available
-	if testing.Short() {
-		t.Skip("Skipping integration test")
-	}
-
-	// This test would require:
-	// 1. A test database connection
-	// 2. Test data setup (races, payments, watch_sessions)
-	// 3. Call CalculateMonthlyRevenue
-	// 4. Verify the results
-
-	t.Log("Integration test for CalculateMonthlyRevenue - requires database")
-}
-
 // TestRevenueRepository_RevenueSplit tests the 50/50 revenue split calculation
 func TestRevenueRepository_RevenueSplit(t *testing.T) {
 	// Test that revenue split is calculated correctly (50/50)

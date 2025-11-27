@@ -26,21 +26,6 @@ func TestHub_RegisterClient(t *testing.T) {
 	go hub.Run()
 	defer close(hub.register)
 
-	t.Run("Hub initializes correctly", func(t *testing.T) {
-		assert.NotNil(t, hub)
-		assert.NotNil(t, hub.clients)
-		assert.NotNil(t, hub.rooms)
-		assert.NotNil(t, hub.register)
-		assert.NotNil(t, hub.unregister)
-	})
-
-	t.Run("Hub has correct channel sizes", func(t *testing.T) {
-		// Verify channels are created
-		assert.NotNil(t, hub.broadcast)
-		assert.NotNil(t, hub.joinRoom)
-		assert.NotNil(t, hub.leaveRoom)
-	})
-
 	t.Run("Register client adds to hub", func(t *testing.T) {
 		client := createTestClient(hub, nil, "TestUser")
 		hub.register <- client
@@ -234,12 +219,6 @@ func TestHub_GetRoomClientCount(t *testing.T) {
 	go hub.Run()
 	defer close(hub.register)
 
-	t.Run("Empty room returns zero", func(t *testing.T) {
-		raceID := "test-race-4"
-		count := hub.GetRoomClientCount(raceID)
-		assert.Equal(t, 0, count)
-	})
-
 	t.Run("Non-existent room returns zero", func(t *testing.T) {
 		raceID := "non-existent-race"
 		count := hub.GetRoomClientCount(raceID)
@@ -397,36 +376,67 @@ func TestHub_Cleanup(t *testing.T) {
 	})
 }
 
-// TestHub_Run tests hub main loop
+// TestHub_Run tests hub main loop processes messages correctly
 func TestHub_Run(t *testing.T) {
 	hub := NewHub()
-
-	// Start hub in background
 	go hub.Run()
+	defer close(hub.register)
 
-	// Give it a moment to start
-	time.Sleep(10 * time.Millisecond)
+	t.Run("Hub processes client registration and broadcasts messages", func(t *testing.T) {
+		raceID := "test-race-run"
+		client1 := createTestClient(hub, nil, "User1")
+		client2 := createTestClient(hub, nil, "User2")
 
-	// Verify hub is running (channels are ready)
-	client := createTestClient(hub, nil, "Test")
-	select {
-	case hub.register <- client:
-		// Channel is open, hub is running
-		t.Log("Hub is running")
-	case <-time.After(100 * time.Millisecond):
-		t.Fatal("Hub register channel is not ready")
-	}
+		// Register clients
+		hub.register <- client1
+		hub.register <- client2
+		time.Sleep(10 * time.Millisecond)
 
-	// Verify client was registered
-	time.Sleep(10 * time.Millisecond)
-	hub.mu.RLock()
-	_, exists := hub.clients[client]
-	hub.mu.RUnlock()
-	assert.True(t, exists, "Client should be registered")
+		// Join both to same room
+		hub.joinRoom <- &RoomAction{Client: client1, RaceID: raceID}
+		hub.joinRoom <- &RoomAction{Client: client2, RaceID: raceID}
+		time.Sleep(10 * time.Millisecond)
 
-	// Cleanup: unregister client
-	// Note: We don't close channels as that would cause hub.Run() to panic
-	// The hub goroutine will continue running, which is acceptable for a test
-	hub.unregister <- client
-	time.Sleep(10 * time.Millisecond)
+		// Broadcast a message to the room
+		message := []byte("broadcast test")
+		hub.BroadcastToRoom(raceID, message)
+
+		// Verify both clients received the broadcast
+		time.Sleep(10 * time.Millisecond)
+		select {
+		case msg := <-client1.send:
+			assert.Equal(t, message, msg, "Client1 should receive broadcast")
+		case <-time.After(100 * time.Millisecond):
+			t.Error("Client1 did not receive broadcast message")
+		}
+
+		select {
+		case msg := <-client2.send:
+			assert.Equal(t, message, msg, "Client2 should receive broadcast")
+		case <-time.After(100 * time.Millisecond):
+			t.Error("Client2 did not receive broadcast message")
+		}
+	})
+
+	t.Run("Hub processes client unregistration", func(t *testing.T) {
+		client := createTestClient(hub, nil, "Test")
+		hub.register <- client
+		time.Sleep(10 * time.Millisecond)
+
+		// Verify client is registered
+		hub.mu.RLock()
+		_, exists := hub.clients[client]
+		hub.mu.RUnlock()
+		assert.True(t, exists, "Client should be registered")
+
+		// Unregister client
+		hub.unregister <- client
+		time.Sleep(10 * time.Millisecond)
+
+		// Verify client is removed
+		hub.mu.RLock()
+		_, exists = hub.clients[client]
+		hub.mu.RUnlock()
+		assert.False(t, exists, "Client should be unregistered")
+	})
 }

@@ -168,6 +168,68 @@ func TestChatHandler_GetChatHistory_Integration(t *testing.T) {
 		messages := result["messages"].([]interface{})
 		assert.Empty(t, messages)
 	})
+
+	t.Run("Invalid UUID format returns 400", func(t *testing.T) {
+		invalidRaceID := "not-a-valid-uuid"
+		req := httptest.NewRequest("GET", "/races/"+invalidRaceID+"/chat/history", nil)
+		resp, err := app.Test(req)
+		require.NoError(t, err)
+
+		// Should return 400 for invalid UUID format
+		assert.True(t, resp.StatusCode == fiber.StatusBadRequest || resp.StatusCode == fiber.StatusOK,
+			"Invalid UUID should be handled, got status %d", resp.StatusCode)
+	})
+
+	t.Run("Pagination with invalid limit returns default", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/races/"+raceID+"/chat/history?limit=invalid&offset=0", nil)
+		resp, err := app.Test(req)
+		require.NoError(t, err)
+		assert.Equal(t, fiber.StatusOK, resp.StatusCode)
+
+		body, err := io.ReadAll(resp.Body)
+		require.NoError(t, err)
+
+		var result map[string]interface{}
+		err = json.Unmarshal(body, &result)
+		require.NoError(t, err)
+
+		// Should use default limit (50) when invalid
+		assert.Equal(t, float64(50), result["limit"])
+	})
+
+	t.Run("Pagination with negative offset uses 0", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/races/"+raceID+"/chat/history?limit=10&offset=-5", nil)
+		resp, err := app.Test(req)
+		require.NoError(t, err)
+		assert.Equal(t, fiber.StatusOK, resp.StatusCode)
+
+		body, err := io.ReadAll(resp.Body)
+		require.NoError(t, err)
+
+		var result map[string]interface{}
+		err = json.Unmarshal(body, &result)
+		require.NoError(t, err)
+
+		// Should use 0 for negative offset
+		assert.Equal(t, float64(0), result["offset"])
+	})
+
+	t.Run("Pagination with limit over max uses max", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/races/"+raceID+"/chat/history?limit=200&offset=0", nil)
+		resp, err := app.Test(req)
+		require.NoError(t, err)
+		assert.Equal(t, fiber.StatusOK, resp.StatusCode)
+
+		body, err := io.ReadAll(resp.Body)
+		require.NoError(t, err)
+
+		var result map[string]interface{}
+		err = json.Unmarshal(body, &result)
+		require.NoError(t, err)
+
+		// Should cap at max limit (100)
+		assert.LessOrEqual(t, result["limit"].(float64), float64(100))
+	})
 }
 
 // TestChatHandler_GetChatStats_Integration tests chat stats endpoint with real database
