@@ -144,9 +144,9 @@ export default function LeaderboardPage() {
                   <tr className="border-b border-border/50">
                     <th className="text-left py-3 px-4 text-sm font-semibold text-muted-foreground">Rank</th>
                     <th className="text-left py-3 px-4 text-sm font-semibold text-muted-foreground">User</th>
-                    <th className="text-right py-3 px-4 text-sm font-semibold text-muted-foreground">Points</th>
-                    <th className="text-right py-3 px-4 text-sm font-semibold text-muted-foreground">Time Watched</th>
-                    <th className="text-center py-3 px-4 text-sm font-semibold text-muted-foreground">Profile</th>
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-muted-foreground">Points</th>
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-muted-foreground">Time Watched</th>
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-muted-foreground">Profile</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -185,23 +185,23 @@ export default function LeaderboardPage() {
                             </span>
                           </div>
                         </td>
-                        <td className="py-4 px-4 text-right">
-                          <div className="flex items-center justify-end gap-1">
+                        <td className="py-4 px-4 text-left">
+                          <div className="flex items-center gap-1">
                             <Award className="w-4 h-4 text-muted-foreground" />
                             <span className="font-semibold text-foreground/95">
                               {entry.points.toLocaleString()}
                             </span>
                           </div>
                         </td>
-                        <td className="py-4 px-4 text-right">
-                          <div className="flex items-center justify-end gap-1">
+                        <td className="py-4 px-4 text-left">
+                          <div className="flex items-center gap-1">
                             <Clock className="w-4 h-4 text-muted-foreground" />
                             <span className="font-semibold text-foreground/95">
                               {formatWatchTime(entry.total_watch_minutes)}
                             </span>
                           </div>
                         </td>
-                        <td className="py-4 px-4 text-center">
+                        <td className="py-4 px-4 text-left">
                           <Link
                             href={`/users/${entry.id}`}
                             className="inline-flex items-center text-sm text-primary hover:text-primary/80 hover:underline transition-colors"
