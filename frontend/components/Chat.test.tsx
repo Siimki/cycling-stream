@@ -9,6 +9,8 @@
 
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import Chat from './Chat';
+import * as useChatModule from '../hooks/useChat';
+import * as authModule from '../lib/auth';
 
 // Mock useChat hook
 jest.mock('../hooks/useChat', () => ({
@@ -72,8 +74,7 @@ describe('Chat', () => {
 
   it('should show sign in prompt for anonymous users', () => {
     // Mock getToken to return null
-    const { getToken } = require('../lib/auth');
-    getToken.mockReturnValueOnce(null);
+    jest.mocked(authModule.getToken).mockReturnValueOnce(null);
 
     render(<Chat raceId={raceId} enabled={enabled} />);
 
@@ -81,9 +82,8 @@ describe('Chat', () => {
   });
 
   it('should handle message sending', async () => {
-    const { useChat } = require('../hooks/useChat');
     const mockSendMessage = jest.fn();
-    useChat.mockReturnValueOnce({
+    jest.mocked(useChatModule.useChat).mockReturnValueOnce({
       messages: [],
       sendMessage: mockSendMessage,
       isConnected: true,
@@ -105,8 +105,7 @@ describe('Chat', () => {
   });
 
   it('should display messages', () => {
-    const { useChat } = require('../hooks/useChat');
-    useChat.mockReturnValueOnce({
+    jest.mocked(useChatModule.useChat).mockReturnValueOnce({
       messages: [
         {
           id: 'msg-1',
@@ -129,8 +128,7 @@ describe('Chat', () => {
   });
 
   it('should show error message when error occurs', () => {
-    const { useChat } = require('../hooks/useChat');
-    useChat.mockReturnValueOnce({
+    jest.mocked(useChatModule.useChat).mockReturnValueOnce({
       messages: [],
       sendMessage: jest.fn(),
       isConnected: false,
@@ -163,8 +161,7 @@ describe('Chat', () => {
   });
 
   it('should disable input when not connected', () => {
-    const { useChat } = require('../hooks/useChat');
-    useChat.mockReturnValueOnce({
+    jest.mocked(useChatModule.useChat).mockReturnValueOnce({
       messages: [],
       sendMessage: jest.fn(),
       isConnected: false,

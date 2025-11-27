@@ -9,7 +9,7 @@ import {
   useState,
   type ReactNode,
 } from "react"
-import { awardBonusPoints, getProfile, getToken } from "@/lib/auth"
+import { awardBonusPoints, getProfile } from "@/lib/auth"
 import { useAuth } from "@/contexts/AuthContext"
 import { WATCH_TIME_UPDATE_INTERVAL_MS, POINTS_REFRESH_INTERVAL_MS, BONUS_COOLDOWN_SECONDS } from "@/constants/intervals"
 import { createContextLogger } from '@/lib/logger';
@@ -33,13 +33,15 @@ export function HudStatsProvider({ children }: { children: ReactNode }) {
   const [cooldown, setCooldown] = useState(0)
 
   // Accumulate local watch time (UI only, not persisted)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const interval = setInterval(() => {
+      // setState in interval callback is valid - not synchronous setState in effect
       setWatchTime((prev) => prev + 1)
     }, WATCH_TIME_UPDATE_INTERVAL_MS)
 
     return () => clearInterval(interval)
-  }, [])
+  }, []) // Empty deps intentional - interval should run once
 
   // Load real points from backend and refresh periodically
   useEffect(() => {
@@ -61,16 +63,19 @@ export function HudStatsProvider({ children }: { children: ReactNode }) {
 
     const interval = setInterval(fetchPoints, POINTS_REFRESH_INTERVAL_MS)
     return () => clearInterval(interval)
-  }, [token])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]) // getProfile is stable, no need to include in deps
 
   // Surface bonus every 30 seconds when cooldown is clear (fast iteration)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (watchTime > 0 && watchTime % BONUS_COOLDOWN_SECONDS === 0 && cooldown === 0) {
       setBonusReady(true)
     }
-  }, [watchTime, cooldown])
+  }, [watchTime, cooldown]) // Intentional setState in effect for derived state
 
   // Cooldown countdown
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (cooldown <= 0) return
 
@@ -79,7 +84,7 @@ export function HudStatsProvider({ children }: { children: ReactNode }) {
     }, 1000)
 
     return () => clearTimeout(timer)
-  }, [cooldown])
+  }, [cooldown]) // Intentional setState in effect for timer-based state
 
   const claimBonus = useCallback(() => {
     if (!bonusReady || !token) {

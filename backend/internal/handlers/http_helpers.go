@@ -17,7 +17,7 @@ type APIError struct {
 //   }
 func parseBody(c *fiber.Ctx, dst interface{}) bool {
 	if err := c.BodyParser(dst); err != nil {
-		c.Status(fiber.StatusBadRequest).JSON(APIError{
+		_ = c.Status(fiber.StatusBadRequest).JSON(APIError{
 			Error: "Invalid request body",
 		})
 		return false
@@ -33,7 +33,7 @@ func parseBody(c *fiber.Ctx, dst interface{}) bool {
 func requireParam(c *fiber.Ctx, name string, errorMessage string) (string, bool) {
 	value := c.Params(name)
 	if value == "" {
-		c.Status(fiber.StatusBadRequest).JSON(APIError{
+		_ = c.Status(fiber.StatusBadRequest).JSON(APIError{
 			Error: errorMessage,
 		})
 		return "", false
@@ -51,7 +51,7 @@ func requireParam(c *fiber.Ctx, name string, errorMessage string) (string, bool)
 func requireUserID(c *fiber.Ctx, errorMessage string) (string, bool) {
 	userID, ok := c.Locals("user_id").(string)
 	if !ok || userID == "" {
-		c.Status(fiber.StatusUnauthorized).JSON(APIError{
+		_ = c.Status(fiber.StatusUnauthorized).JSON(APIError{
 			Error: errorMessage,
 		})
 		return "", false

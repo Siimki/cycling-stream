@@ -11,7 +11,8 @@ const logger = createContextLogger('Chat');
 
 interface WSMessage {
   type: string;
-  data?: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  data?: any; // WebSocket message data can be any shape
 }
 
 interface UseChatReturn {

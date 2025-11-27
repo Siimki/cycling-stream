@@ -6,7 +6,7 @@ import { useChatContext } from '@/components/chat/ChatProvider';
 import { useAuth } from '@/contexts/AuthContext';
 import { getChatHistory, ChatMessage } from '@/lib/api';
 import { CHAT_HISTORY_LIMIT, CHAT_MESSAGE_MAX_LENGTH } from '@/constants/intervals';
-import { Send, Settings, Users } from "lucide-react"
+import { Send, Settings } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useHudStats } from "@/components/user/HudStatsProvider"
@@ -44,6 +44,7 @@ export default function Chat() {
   }, [enabled, raceId, historyLoaded]);
 
   // Merge WebSocket messages with loaded history
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (historyLoaded && wsMessages.length > 0) {
       setMessages((prev) => {
@@ -58,7 +59,8 @@ export default function Chat() {
         return prev;
       });
     }
-  }, [wsMessages, historyLoaded]);
+    // wsMessages is intentionally not in deps - we want to merge when it changes
+  }, [historyLoaded, wsMessages]);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {

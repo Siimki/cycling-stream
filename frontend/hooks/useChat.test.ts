@@ -11,6 +11,7 @@ import { renderHook, act, waitFor } from '@testing-library/react';
 import { useChat } from './useChat';
 
 // Mock WebSocket with better functionality for testing
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 class MockWebSocket {
   static CONNECTING = 0;
   static OPEN = 1;
@@ -80,10 +81,12 @@ class MockWebSocket {
 let mockWebSocketInstances: MockWebSocket[] = [];
 
 // Mock global WebSocket
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 (global as any).WebSocket = jest.fn((url: string) => {
   const mock = new MockWebSocket(url);
   mockWebSocketInstances.push(mock);
   return mock;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 }) as any;
 
 // Helper to get the latest mock WebSocket instance

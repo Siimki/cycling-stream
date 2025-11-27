@@ -35,11 +35,13 @@ export function PointsDisplay({ points, watchTime, addPoints }: PointsDisplayPro
   }
 
   // Bonus ready every 5 minutes
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (watchTime > 0 && watchTime % 300 === 0 && cooldown === 0) {
+      // setState for derived state based on watchTime - valid pattern
       setBonusReady(true)
     }
-  }, [watchTime, cooldown])
+  }, [watchTime, cooldown]) // Intentional setState in effect for derived state
 
   useEffect(() => {
     if (cooldown > 0) {

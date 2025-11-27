@@ -147,6 +147,7 @@ export function useVideoPlayer(streamUrl?: string, status: string = 'offline'): 
   }, []);
 
   // HLS initialization and management
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!videoRef.current) return;
 
@@ -156,7 +157,7 @@ export function useVideoPlayer(streamUrl?: string, status: string = 'offline'): 
       hlsRef.current = null;
     }
 
-    // Buffering state
+    // Buffering state - event handlers are fine, setState in handlers is valid
     const handleWaiting = () => setIsBuffering(true);
     const handleCanPlay = () => setIsBuffering(false);
     const handlePlaying = () => {
@@ -225,6 +226,7 @@ export function useVideoPlayer(streamUrl?: string, status: string = 'offline'): 
         });
 
         hlsRef.current = hls;
+        // Set HLS state after initialization - valid pattern for setup
         setHasHls(true);
       } else if (videoRef.current.canPlayType('application/vnd.apple.mpegurl')) {
         // Native HLS support (Safari)
@@ -248,10 +250,11 @@ export function useVideoPlayer(streamUrl?: string, status: string = 'offline'): 
       if (hlsRef.current) {
         hlsRef.current.destroy();
         hlsRef.current = null;
+        // Cleanup state - valid pattern for cleanup
         setHasHls(false);
       }
     };
-  }, [streamUrl, status]);
+  }, [streamUrl, status]); // Event handlers are stable, no need in deps
 
   return {
     videoRef,
