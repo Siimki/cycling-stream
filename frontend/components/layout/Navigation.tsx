@@ -64,6 +64,16 @@ export function Navigation({ variant = "full" }: NavigationProps) {
                     <span className="ml-2 w-2 h-2 rounded-full bg-live animate-live-pulse" />
                   </Button>
                 </Link>
+                {isAuthenticated && (
+                  <Link href="/for-you">
+                    <Button
+                      variant="ghost"
+                      className="text-muted-foreground hover:text-foreground hover:bg-muted/50 text-sm font-medium h-9 px-4 rounded-lg transition-colors"
+                    >
+                      For You
+                    </Button>
+                  </Link>
+                )}
                 <Link href="/">
                   <Button
                     variant="ghost"

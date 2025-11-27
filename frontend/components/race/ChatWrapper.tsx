@@ -75,7 +75,7 @@ export function ChatWrapper({ raceId, requiresLogin, isLive }: ChatWrapperProps)
 
     // User is authenticated - show chat (enabled if stream is live OR user is authenticated)
     return (
-      <div className="lg:w-80 xl:w-96 2xl:w-[400px] border-t lg:border-t-0 lg:border-l border-border flex flex-col h-[300px] sm:h-[350px] lg:h-[calc(100vh-4rem)] shrink-0 bg-background">
+      <div className="lg:w-80 xl:w-96 2xl:w-[400px] border-t lg:border-t-0 lg:border-l border-border flex flex-col h-[300px] sm:h-[350px] lg:h-[calc(100vh-4rem)] shrink-0 bg-background relative z-0">
         <ChatProvider raceId={raceId} enabled={isLive || isAuthenticated}>
           <Chat />
         </ChatProvider>
@@ -85,7 +85,7 @@ export function ChatWrapper({ raceId, requiresLogin, isLive }: ChatWrapperProps)
 
   // Show chat for races that don't require login (enabled if stream is live)
   return (
-    <div className="lg:w-80 xl:w-96 2xl:w-[400px] border-t lg:border-t-0 lg:border-l border-border flex flex-col h-[300px] sm:h-[350px] lg:h-[calc(100vh-4rem)] shrink-0 bg-background">
+    <div className="lg:w-80 xl:w-96 2xl:w-[400px] border-t lg:border-t-0 lg:border-l border-border flex flex-col h-[300px] sm:h-[350px] lg:h-[calc(100vh-4rem)] shrink-0 bg-background relative z-0">
       <ChatProvider raceId={raceId} enabled={isLive}>
         <Chat />
       </ChatProvider>

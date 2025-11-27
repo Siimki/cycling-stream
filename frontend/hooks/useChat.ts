@@ -107,8 +107,10 @@ export function useChat(raceId: string, enabled: boolean): UseChatReturn {
     let pingInterval: NodeJS.Timeout;
     let reconnectTimeout: NodeJS.Timeout;
     let isCleanup = false;
-    let reconnectDelay = WEBSOCKET_RECONNECT_DELAY_MS;
-    const maxReconnectDelay = WEBSOCKET_MAX_RECONNECT_DELAY_MS;
+    let reconnectAttempts = 0;
+    // Retry schedule: 3s, 5s, 10s, 30s, then stop
+    const retryDelays = [3000, 5000, 10000, 30000];
+    const maxReconnectAttempts = retryDelays.length;
 
     const connect = () => {
       if (isCleanup) return;
@@ -139,7 +141,7 @@ export function useChat(raceId: string, enabled: boolean): UseChatReturn {
           logger.debug('Chat connected');
           setIsConnected(true);
           setChatError(null);
-          reconnectDelay = WEBSOCKET_RECONNECT_DELAY_MS; // Reset backoff
+          reconnectAttempts = 0; // Reset retry attempts on successful connection
 
           // Setup ping
           pingInterval = setInterval(() => {
@@ -149,73 +151,163 @@ export function useChat(raceId: string, enabled: boolean): UseChatReturn {
           }, WEBSOCKET_PING_INTERVAL_MS);
         };
 
+        ws.onerror = (event) => {
+          // Only log errors if connection was actually attempted (not during cleanup)
+          if (!isCleanup && ws?.readyState !== WebSocket.CLOSED) {
+            logger.debug('WebSocket error (may be harmless during navigation):', event);
+          }
+        };
+
         ws.onmessage = (event) => {
           if (isCleanup) return;
           
           try {
-            const msg: WSMessage = JSON.parse(event.data);
-            
-            switch (msg.type) {
-              case 'message':
-                if (msg.data) {
-                  const chatMsg: ChatMessage = {
-                    id: msg.data.id,
-                    race_id: msg.data.race_id,
-                    user_id: msg.data.user_id,
-                    username: msg.data.username,
-                    message: msg.data.message,
-                    created_at: msg.data.created_at,
-                  };
-                  setMessages((prev) => {
-                    if (prev.some(m => m.id === chatMsg.id)) return prev;
-                    return [...prev, chatMsg];
-                  });
+            // Handle non-string data (Blob, ArrayBuffer, etc.)
+            let dataString: string;
+            if (typeof event.data === 'string') {
+              dataString = event.data;
+            } else if (event.data instanceof Blob) {
+              // Skip binary data (might be ping/pong or other non-JSON messages)
+              logger.debug('Received binary WebSocket message, skipping');
+              return;
+            } else {
+              logger.debug('Received non-string WebSocket message, skipping', { type: typeof event.data });
+              return;
+            }
+
+            // Backend sends multiple JSON messages separated by newlines in a single frame
+            // Split by newline and process each message
+            const messages = dataString.split('\n').filter(line => line.trim().length > 0);
+
+            for (const messageStr of messages) {
+              const trimmed = messageStr.trim();
+              
+              // Skip empty messages
+              if (!trimmed) {
+                continue;
+              }
+
+              // Handle ping/pong responses (might not be JSON)
+              if (trimmed === 'pong' || trimmed === 'ping') {
+                logger.debug('Received ping/pong message');
+                continue;
+              }
+
+              try {
+                const msg: WSMessage = JSON.parse(trimmed);
+                
+                switch (msg.type) {
+                  case 'message':
+                    if (msg.data) {
+                      const chatMsg: ChatMessage = {
+                        id: msg.data.id,
+                        race_id: msg.data.race_id,
+                        user_id: msg.data.user_id,
+                        username: msg.data.username,
+                        message: msg.data.message,
+                        created_at: msg.data.created_at,
+                      };
+                      setMessages((prev) => {
+                        if (prev.some(m => m.id === chatMsg.id)) return prev;
+                        return [...prev, chatMsg];
+                      });
+                    }
+                    break;
+                  case 'error':
+                    logger.warn('Chat server error:', msg.data?.message);
+                    if (msg.data?.message) {
+                        // Delay showing error by 500ms to avoid flashing during transient connection issues
+                        setChatError(msg.data.message, 500);
+                    }
+                    break;
+                  case 'pong':
+                    // Silently handle pong responses
+                    logger.debug('Received pong response');
+                    break;
+                  case 'joined':
+                  case 'left':
+                    // Silently handle join/leave messages (they're informational)
+                    logger.debug(`User ${msg.type}:`, msg.data?.username);
+                    break;
                 }
-                break;
-              case 'error':
-                logger.warn('Chat server error:', msg.data?.message);
-                if (msg.data?.message) {
-                    // Delay showing error by 500ms to avoid flashing during transient connection issues
-                    setChatError(msg.data.message, 500);
-                }
-                break;
+              } catch (parseError) {
+                // Log parse error for individual message, but continue processing others
+                logger.error('Failed to parse individual chat message:', {
+                  error: parseError instanceof Error ? parseError.message : String(parseError),
+                  messagePreview: trimmed.substring(0, 100),
+                  messageLength: trimmed.length
+                });
+              }
             }
           } catch (e) {
-            logger.error('Failed to parse chat message:', e);
+            // Log the actual data for debugging, but truncate if too long
+            const dataPreview = typeof event.data === 'string' 
+              ? event.data.substring(0, 100) 
+              : `[${typeof event.data}]`;
+            logger.error('Failed to process WebSocket message:', {
+              error: e instanceof Error ? e.message : String(e),
+              dataPreview,
+              dataLength: typeof event.data === 'string' ? event.data.length : 'N/A'
+            });
           }
         };
 
         ws.onclose = (event) => {
-          if (isCleanup) return;
+          if (isCleanup) {
+            // Component is unmounting, don't try to reconnect or log errors
+            return;
+          }
           
           setIsConnected(false);
           wsRef.current = null;
           clearInterval(pingInterval);
 
-          logger.debug('Chat disconnected:', event.code, event.reason);
-
-          // If strictly normal closure (1000), don't reconnect
-          if (event.code === 1000) {
+          // Don't log normal closures (code 1000) or going away (1001) as errors
+          if (event.code === 1000 || event.code === 1001) {
+            logger.debug('Chat disconnected normally');
             return;
           }
 
-          // Otherwise, retry with exponential backoff
-          logger.debug(`Reconnecting in ${reconnectDelay}ms...`);
-          reconnectTimeout = setTimeout(() => {
-            reconnectDelay = Math.min(reconnectDelay * 1.5, maxReconnectDelay);
-            connect();
-          }, reconnectDelay);
+          logger.debug('Chat disconnected:', event.code, event.reason);
+
+          // Retry with scheduled delays: 3s, 5s, 10s, 30s, then stop
+          if (reconnectAttempts < maxReconnectAttempts) {
+            const delay = retryDelays[reconnectAttempts];
+            reconnectAttempts++;
+            logger.debug(`Reconnecting in ${delay}ms... (attempt ${reconnectAttempts}/${maxReconnectAttempts})`);
+            reconnectTimeout = setTimeout(() => {
+              connect();
+            }, delay);
+          } else {
+            logger.warn('Max reconnection attempts reached. Stopping retry.');
+            setChatError('Chat connection failed. Please refresh the page to reconnect.');
+          }
         };
 
         ws.onerror = (e) => {
-           // Error details usually appear in onclose
-           logger.debug('WebSocket error:', e);
+          // Suppress errors during cleanup (component unmounting)
+          if (isCleanup) {
+            return;
+          }
+          // Error details usually appear in onclose
+          // Only log if connection was actually attempted
+          if (ws?.readyState === WebSocket.CONNECTING || ws?.readyState === WebSocket.OPEN) {
+            logger.debug('WebSocket error (may be harmless):', e);
+          }
         };
 
       } catch (e) {
         logger.error('Failed to create WebSocket:', e);
-        // Retry if creation fails (e.g. URL error)
-        reconnectTimeout = setTimeout(connect, 5000);
+        // Retry if creation fails (e.g. URL error) using the same retry schedule
+        if (reconnectAttempts < maxReconnectAttempts) {
+          const delay = retryDelays[reconnectAttempts];
+          reconnectAttempts++;
+          logger.debug(`Retrying WebSocket creation in ${delay}ms... (attempt ${reconnectAttempts}/${maxReconnectAttempts})`);
+          reconnectTimeout = setTimeout(connect, delay);
+        } else {
+          logger.warn('Max reconnection attempts reached. Stopping retry.');
+          setChatError('Chat connection failed. Please refresh the page to reconnect.');
+        }
       }
     };
 
@@ -224,21 +316,39 @@ export function useChat(raceId: string, enabled: boolean): UseChatReturn {
     return () => {
       isCleanup = true;
       logger.debug('Cleaning up chat connection');
-      if (ws) {
-        // Remove listeners to prevent state updates after unmount
-        ws.onclose = null;
-        ws.onmessage = null;
-        ws.onopen = null;
-        ws.onerror = null;
-        ws.close(1000, 'Component unmounting'); // Normal closure
+      
+      // Clear any pending timeouts
+      if (reconnectTimeout) {
+        clearTimeout(reconnectTimeout);
       }
-      if (wsRef.current) {
-        wsRef.current.onclose = null;
-        wsRef.current.onmessage = null;
-        wsRef.current.onopen = null;
-        wsRef.current.onerror = null;
-        wsRef.current.close(1000, 'Component unmounting');
+      if (pingInterval) {
+        clearInterval(pingInterval);
       }
+      
+      // Close WebSocket connections gracefully
+      const closeSocket = (socket: WebSocket | null) => {
+        if (!socket) return;
+        
+        // Suppress all error events before closing
+        socket.onerror = () => {}; // Empty handler to suppress errors
+        socket.onclose = () => {}; // Empty handler to suppress close events
+        
+        // Only close if not already closed or closing
+        if (socket.readyState === WebSocket.CONNECTING || socket.readyState === WebSocket.OPEN) {
+          // Remove listeners to prevent state updates after unmount
+          socket.onmessage = null;
+          socket.onopen = null;
+          try {
+            socket.close(1000, 'Component unmounting'); // Normal closure
+          } catch (e) {
+            // Ignore errors during cleanup (socket may already be closing)
+          }
+        }
+      };
+      
+      closeSocket(ws);
+      closeSocket(wsRef.current);
+      wsRef.current = null;
       wsRef.current = null;
       clearInterval(pingInterval);
       clearTimeout(reconnectTimeout);

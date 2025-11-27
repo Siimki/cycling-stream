@@ -7,6 +7,7 @@ import (
 	"github.com/cyclingstream/backend/internal/handlers"
 	"github.com/cyclingstream/backend/internal/middleware"
 	"github.com/cyclingstream/backend/internal/repository"
+	"github.com/cyclingstream/backend/internal/services"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 )
@@ -47,6 +48,10 @@ func SetupRoutes(app *fiber.App, db *database.DB, cfg *config.Config, hub *chat.
 	viewerSessionRepo := repository.NewViewerSessionRepository(db.DB)
 	costRepo := repository.NewCostRepository(db.DB)
 	chatRepo := repository.NewChatRepository(db.DB)
+	userPrefsRepo := repository.NewUserPreferencesRepository(db.DB)
+	userFavRepo := repository.NewUserFavoriteRepository(db.DB)
+	watchHistoryRepo := repository.NewWatchHistoryRepository(db.DB)
+	recommendationService := services.NewRecommendationService(raceRepo, watchHistoryRepo, userFavRepo, streamRepo)
 
 	// Initialize handlers
 	healthHandler := handlers.NewHealthHandler(db)
@@ -72,6 +77,10 @@ func SetupRoutes(app *fiber.App, db *database.DB, cfg *config.Config, hub *chat.
 	costHandler := handlers.NewCostHandler(costRepo, raceRepo)
 	chatHandler := handlers.NewChatHandler(chatRepo, raceRepo, streamRepo, userRepo, hub, rateLimiter)
 	userHandler := handlers.NewUserHandler(userRepo, watchSessionRepo)
+	userPrefsHandler := handlers.NewUserPreferencesHandler(userPrefsRepo)
+	userFavHandler := handlers.NewUserFavoritesHandler(userFavRepo)
+	watchHistoryHandler := handlers.NewWatchHistoryHandler(watchHistoryRepo)
+	recommendationsHandler := handlers.NewRecommendationsHandler(recommendationService)
 
 	// Middleware instances
 	authMiddleware := middleware.AuthMiddleware(cfg.JWTSecret)
@@ -86,7 +95,7 @@ func SetupRoutes(app *fiber.App, db *database.DB, cfg *config.Config, hub *chat.
 	setupViewerRoutes(app, viewerHandler, optionalUserAuthMiddleware)
 	setupStreamRoutes(app, raceHandler, streamHandler, optionalUserAuthMiddleware)
 	setupChatRoutes(app, chatHandler, chatAuthMiddleware)
-	setupUserRoutes(app, authHandler, paymentHandler, watchHandler, userAuthMiddleware, csrfProtection)
+	setupUserRoutes(app, authHandler, paymentHandler, watchHandler, userPrefsHandler, userFavHandler, watchHistoryHandler, recommendationsHandler, userAuthMiddleware, csrfProtection)
 	setupWebhookRoutes(app, paymentHandler)
 	setupAdminRoutes(app, adminHandler, analyticsHandler, costHandler, authMiddleware, csrfProtection)
 }
@@ -138,7 +147,7 @@ func setupChatRoutes(app *fiber.App, chatHandler *handlers.ChatHandler, chatAuth
 	chatRoutes.Get("/races/:id/chat/stats", chatHandler.GetChatStats)
 }
 
-func setupUserRoutes(app *fiber.App, authHandler *handlers.AuthHandler, paymentHandler *handlers.PaymentHandler, watchHandler *handlers.WatchHandler, userAuth fiber.Handler, csrf fiber.Handler) {
+func setupUserRoutes(app *fiber.App, authHandler *handlers.AuthHandler, paymentHandler *handlers.PaymentHandler, watchHandler *handlers.WatchHandler, userPrefsHandler *handlers.UserPreferencesHandler, userFavHandler *handlers.UserFavoritesHandler, watchHistoryHandler *handlers.WatchHistoryHandler, recommendationsHandler *handlers.RecommendationsHandler, userAuth fiber.Handler, csrf fiber.Handler) {
 	// Protected user routes with standard rate limiting and CSRF protection
 	user := app.Group("/users", userAuth, middleware.StandardRateLimiter(), csrf)
 	user.Get("/me", authHandler.GetProfile)
@@ -149,6 +158,25 @@ func setupUserRoutes(app *fiber.App, authHandler *handlers.AuthHandler, paymentH
 	user.Post("/watch/sessions/start", watchHandler.StartSession)
 	user.Post("/watch/sessions/end", watchHandler.EndSession)
 	user.Get("/watch/sessions/stats/:race_id", watchHandler.GetStats)
+	
+	// User preferences routes
+	user.Get("/me/preferences", userPrefsHandler.GetPreferences)
+	user.Put("/me/preferences", userPrefsHandler.UpdatePreferences)
+	user.Post("/me/onboarding/complete", userPrefsHandler.CompleteOnboarding)
+	
+	// User favorites routes
+	user.Get("/me/favorites", userFavHandler.GetFavorites)
+	user.Post("/me/favorites", userFavHandler.AddFavorite)
+	user.Delete("/me/favorites/:type/:id", userFavHandler.RemoveFavorite)
+	
+	// Watch history routes
+	user.Get("/me/watch-history", watchHistoryHandler.GetWatchHistory)
+	
+	// Recommendations routes
+	user.Get("/me/recommendations", recommendationsHandler.GetAllRecommendations)
+	user.Get("/me/recommendations/continue-watching", recommendationsHandler.GetContinueWatching)
+	user.Get("/me/recommendations/upcoming", recommendationsHandler.GetUpcoming)
+	user.Get("/me/recommendations/replays", recommendationsHandler.GetReplays)
 }
 
 func setupWebhookRoutes(app *fiber.App, paymentHandler *handlers.PaymentHandler) {

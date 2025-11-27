@@ -29,7 +29,7 @@ export default function RegisterPage() {
       const data = await register(email, password, name || undefined, bio || undefined);
       setToken(data.token);
       authLogin(data.token, data.user);
-      router.push('/');
+      router.push('/onboarding');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Registration failed');
     } finally {

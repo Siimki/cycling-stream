@@ -124,3 +124,165 @@ export async function getLeaderboard(): Promise<LeaderboardEntry[]> {
   return fetchAPI<LeaderboardEntry[]>('/leaderboard');
 }
 
+// User Preferences Types and API
+export interface UserPreferences {
+  id: string;
+  user_id: string;
+  data_mode: 'casual' | 'standard' | 'pro';
+  preferred_units: 'metric' | 'imperial';
+  theme: 'light' | 'dark' | 'auto';
+  accent_color?: string;
+  device_type?: 'tv' | 'desktop' | 'mobile' | 'tablet';
+  notification_preferences: Record<string, boolean>;
+  onboarding_completed: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface UpdatePreferencesRequest {
+  data_mode?: 'casual' | 'standard' | 'pro';
+  preferred_units?: 'metric' | 'imperial';
+  theme?: 'light' | 'dark' | 'auto';
+  accent_color?: string;
+  device_type?: 'tv' | 'desktop' | 'mobile' | 'tablet';
+  notification_preferences?: Record<string, boolean>;
+  onboarding_completed?: boolean;
+}
+
+export interface UserFavorite {
+  id: string;
+  user_id: string;
+  favorite_type: 'rider' | 'team' | 'race' | 'series';
+  favorite_id: string;
+  created_at: string;
+}
+
+export interface AddFavoriteRequest {
+  favorite_type: 'rider' | 'team' | 'race' | 'series';
+  favorite_id: string;
+}
+
+export interface WatchHistoryEntry {
+  user_id: string;
+  race_id: string;
+  race_name: string;
+  race_category?: string;
+  race_start_date?: string;
+  session_count: number;
+  total_seconds: number;
+  total_minutes: number;
+  first_watched: string;
+  last_watched: string;
+  likely_completed: boolean;
+}
+
+export interface WatchHistoryResponse {
+  entries: WatchHistoryEntry[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+/**
+ * Fetches data from authenticated API endpoints
+ */
+async function fetchAuthenticatedAPI<T>(endpoint: string, options?: RequestInit): Promise<T> {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+  if (!token) {
+    const error: any = new Error('Authentication required');
+    error.status = 401;
+    throw error;
+  }
+
+  return fetchAPI<T>(endpoint, {
+    ...options,
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      ...options?.headers,
+    },
+  });
+}
+
+export async function getUserPreferences(): Promise<UserPreferences> {
+  try {
+    return await fetchAuthenticatedAPI<UserPreferences>('/users/me/preferences');
+  } catch (error: any) {
+    // If 404, return defaults (preferences don't exist yet)
+    if (error?.status === 404) {
+      return {
+        id: '',
+        user_id: '',
+        data_mode: 'standard',
+        preferred_units: 'metric',
+        theme: 'auto',
+        notification_preferences: {},
+        onboarding_completed: false,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+    }
+    throw error;
+  }
+}
+
+export async function updateUserPreferences(prefs: UpdatePreferencesRequest): Promise<UserPreferences> {
+  return fetchAuthenticatedAPI<UserPreferences>('/users/me/preferences', {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(prefs),
+  });
+}
+
+export async function completeOnboarding(): Promise<UserPreferences> {
+  return fetchAuthenticatedAPI<UserPreferences>('/users/me/onboarding/complete', {
+    method: 'POST',
+  });
+}
+
+export async function getUserFavorites(type?: 'rider' | 'team' | 'race' | 'series'): Promise<UserFavorite[]> {
+  const endpoint = type ? `/users/me/favorites?type=${type}` : '/users/me/favorites';
+  return fetchAuthenticatedAPI<UserFavorite[]>(endpoint);
+}
+
+export async function addFavorite(favorite: AddFavoriteRequest): Promise<UserFavorite> {
+  return fetchAuthenticatedAPI<UserFavorite>('/users/me/favorites', {
+    method: 'POST',
+    body: JSON.stringify(favorite),
+  });
+}
+
+export async function removeFavorite(type: 'rider' | 'team' | 'race' | 'series', id: string): Promise<void> {
+  return fetchAuthenticatedAPI<void>(`/users/me/favorites/${type}/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function getWatchHistory(limit = 20, offset = 0): Promise<WatchHistoryResponse> {
+  return fetchAuthenticatedAPI<WatchHistoryResponse>(`/users/me/watch-history?limit=${limit}&offset=${offset}`);
+}
+
+// Recommendations Types and API
+export interface RecommendationsResponse {
+  continue_watching: Race[];
+  upcoming: Race[];
+  replays: Race[];
+}
+
+export async function getRecommendations(): Promise<RecommendationsResponse> {
+  return fetchAuthenticatedAPI<RecommendationsResponse>('/users/me/recommendations');
+}
+
+export async function getContinueWatching(): Promise<Race[]> {
+  return fetchAuthenticatedAPI<Race[]>('/users/me/recommendations/continue-watching');
+}
+
+export async function getUpcomingRaces(): Promise<Race[]> {
+  return fetchAuthenticatedAPI<Race[]>('/users/me/recommendations/upcoming');
+}
+
+export async function getRecommendedReplays(): Promise<Race[]> {
+  return fetchAuthenticatedAPI<Race[]>('/users/me/recommendations/replays');
+}
+

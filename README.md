@@ -58,6 +58,20 @@ The Go backend follows a few helper-based patterns to keep handlers small and co
 - Using `requireParam` for required path params (`id`, `race_id`, `session_id`, etc.).
 - Using `requireUserID` for endpoints that require authentication.
 - Using `APIError` for simple error responses, and the helper utilities (`loadRaceOr404`, `loadStreamOr404`, `verifyViewerSessionOwnership`) where applicable.
+## 🎯 Key Features
+
+- **Live Race Streaming**: Watch live cycling races with HLS streaming support
+- **User Accounts & Authentication**: Secure user registration and login
+- **Pay-Per-View Tickets**: Stripe integration for race access
+- **Personalization**: 
+  - Onboarding wizard to customize your experience
+  - Personalized "For You" page with recommendations
+  - Favorite riders, teams, and races
+  - Watch history tracking
+- **Real-time Chat**: WebSocket-based chat during live races
+- **Watch Time Tracking**: Track viewing statistics per user per race
+- **Admin Dashboard**: Manage races, streams, and view analytics
+
 ## 🚀 Quickstart: Run the app locally
 
 ### Prerequisites
@@ -310,6 +324,25 @@ Goal: Start moving from "toy project" → actual platform with users & payments.
 **Remaining:**
 - ⏳ Frontend payment flow UI (payment button/component)
 - ⏳ End of month revenue split calculation (Phase 6.4)
+
+🎯 Phase 6.5 – Personalization Platform ✅ (Complete)
+
+Goal: Make each viewer feel the stream is built for them.
+
+**Completed:**
+- ✅ User preferences system (data mode, units, theme, device type, notifications)
+- ✅ User favorites (riders, teams, races, series)
+- ✅ Watch history tracking and aggregation
+- ✅ 5-step onboarding wizard (cycling level, view preference, favorites, device, notifications)
+- ✅ User segmentation logic (Casual Viewer, Hardcore Fan, Data Nerd, etc.)
+- ✅ "For You" personalized page with:
+  - Continue watching section
+  - Upcoming races from favorite series
+  - Recommended replays based on watch history
+  - Personal stats (watch time, points, races watched)
+- ✅ Rules-based recommendation service
+- ✅ Personalized navigation ("For You" tab for logged-in users)
+- ✅ WebSocket chat with improved retry logic (3s, 5s, 10s, 30s then stop)
 
 ✅ Done when:
 Someone can create an account, pay for access, and then watch a paid race legitimately on your platform. Watching generates usable data for later revenue share.
