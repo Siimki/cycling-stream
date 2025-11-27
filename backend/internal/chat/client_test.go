@@ -3,8 +3,14 @@ package chat
 import (
 	"testing"
 
+	"github.com/cyclingstream/backend/internal/logger"
 	"github.com/stretchr/testify/assert"
 )
+
+func init() {
+	// Initialize logger for tests
+	logger.Init("test")
+}
 
 // TestClient_NewClient tests client creation
 func TestClient_NewClient(t *testing.T) {

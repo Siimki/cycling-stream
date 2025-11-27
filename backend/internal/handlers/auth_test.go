@@ -37,6 +37,10 @@ func setupAuthTestApp(t *testing.T) (*fiber.App, *AuthHandler, func()) {
 
 // TestAuthHandler_Login tests login functionality
 func TestAuthHandler_Login(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test in short mode")
+	}
+	
 	app, _, cleanup := setupAuthTestApp(t)
 	defer cleanup()
 

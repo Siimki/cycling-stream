@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "test": "echo \"No tests specified yet\" && exit 0"
+    "test": "echo \"⚠️  Frontend tests exist but Jest is not configured yet. See frontend/hooks/useChat.test.ts and frontend/components/Chat.test.tsx for test files that need Jest setup.\" && exit 0"
   },
   "dependencies": {
     "clsx": "^2.1.1",
