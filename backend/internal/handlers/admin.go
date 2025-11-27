@@ -25,14 +25,19 @@ func NewAdminHandler(raceRepo *repository.RaceRepository, streamRepo *repository
 }
 
 type CreateRaceRequest struct {
-	Name        string     `json:"name"`
-	Description *string    `json:"description"`
-	StartDate   *time.Time `json:"start_date"`
-	EndDate     *time.Time `json:"end_date"`
-	Location    *string    `json:"location"`
-	Category    *string    `json:"category"`
-	IsFree      bool       `json:"is_free"`
-	PriceCents  int        `json:"price_cents"`
+	Name               string     `json:"name"`
+	Description        *string    `json:"description"`
+	StartDate          *time.Time `json:"start_date"`
+	EndDate            *time.Time `json:"end_date"`
+	Location           *string    `json:"location"`
+	Category           *string    `json:"category"`
+	IsFree             bool       `json:"is_free"`
+	PriceCents         int        `json:"price_cents"`
+	StageName          *string    `json:"stage_name"`
+	StageType          *string    `json:"stage_type"`
+	ElevationMeters    *int       `json:"elevation_meters"`
+	EstimatedFinishTime *string   `json:"estimated_finish_time"`
+	StageLengthKm      *int       `json:"stage_length_km"`
 }
 
 func (h *AdminHandler) CreateRace(c *fiber.Ctx) error {
@@ -63,6 +68,20 @@ func (h *AdminHandler) CreateRace(c *fiber.Ctx) error {
 		req.Category = &sanitized
 	}
 
+	// Sanitize stage fields
+	if req.StageName != nil {
+		sanitized := middleware.SanitizeString(*req.StageName, 100)
+		req.StageName = &sanitized
+	}
+	if req.StageType != nil {
+		sanitized := middleware.SanitizeString(*req.StageType, 50)
+		req.StageType = &sanitized
+	}
+	if req.EstimatedFinishTime != nil {
+		sanitized := middleware.SanitizeString(*req.EstimatedFinishTime, 10)
+		req.EstimatedFinishTime = &sanitized
+	}
+
 	// Validate price
 	if req.PriceCents < 0 {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -75,15 +94,32 @@ func (h *AdminHandler) CreateRace(c *fiber.Ctx) error {
 		})
 	}
 
+	// Validate elevation and length if provided
+	if req.ElevationMeters != nil && *req.ElevationMeters < 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Elevation cannot be negative",
+		})
+	}
+	if req.StageLengthKm != nil && *req.StageLengthKm < 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Stage length cannot be negative",
+		})
+	}
+
 	race := &models.Race{
-		Name:        req.Name,
-		Description: req.Description,
-		StartDate:   req.StartDate,
-		EndDate:     req.EndDate,
-		Location:    req.Location,
-		Category:    req.Category,
-		IsFree:      req.IsFree,
-		PriceCents:  req.PriceCents,
+		Name:               req.Name,
+		Description:        req.Description,
+		StartDate:          req.StartDate,
+		EndDate:            req.EndDate,
+		Location:           req.Location,
+		Category:           req.Category,
+		IsFree:             req.IsFree,
+		PriceCents:         req.PriceCents,
+		StageName:          req.StageName,
+		StageType:          req.StageType,
+		ElevationMeters:    req.ElevationMeters,
+		EstimatedFinishTime: req.EstimatedFinishTime,
+		StageLengthKm:      req.StageLengthKm,
 	}
 
 	if err := h.raceRepo.Create(race); err != nil {
@@ -130,6 +166,20 @@ func (h *AdminHandler) UpdateRace(c *fiber.Ctx) error {
 		req.Category = &sanitized
 	}
 
+	// Sanitize stage fields
+	if req.StageName != nil {
+		sanitized := middleware.SanitizeString(*req.StageName, 100)
+		req.StageName = &sanitized
+	}
+	if req.StageType != nil {
+		sanitized := middleware.SanitizeString(*req.StageType, 50)
+		req.StageType = &sanitized
+	}
+	if req.EstimatedFinishTime != nil {
+		sanitized := middleware.SanitizeString(*req.EstimatedFinishTime, 10)
+		req.EstimatedFinishTime = &sanitized
+	}
+
 	// Validate price
 	if req.PriceCents < 0 {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -137,16 +187,33 @@ func (h *AdminHandler) UpdateRace(c *fiber.Ctx) error {
 		})
 	}
 
+	// Validate elevation and length if provided
+	if req.ElevationMeters != nil && *req.ElevationMeters < 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Elevation cannot be negative",
+		})
+	}
+	if req.StageLengthKm != nil && *req.StageLengthKm < 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Stage length cannot be negative",
+		})
+	}
+
 	race := &models.Race{
-		ID:          id,
-		Name:        req.Name,
-		Description: req.Description,
-		StartDate:   req.StartDate,
-		EndDate:     req.EndDate,
-		Location:    req.Location,
-		Category:    req.Category,
-		IsFree:      req.IsFree,
-		PriceCents:  req.PriceCents,
+		ID:                 id,
+		Name:               req.Name,
+		Description:        req.Description,
+		StartDate:          req.StartDate,
+		EndDate:            req.EndDate,
+		Location:           req.Location,
+		Category:           req.Category,
+		IsFree:             req.IsFree,
+		PriceCents:         req.PriceCents,
+		StageName:          req.StageName,
+		StageType:          req.StageType,
+		ElevationMeters:    req.ElevationMeters,
+		EstimatedFinishTime: req.EstimatedFinishTime,
+		StageLengthKm:      req.StageLengthKm,
 	}
 
 	if err := h.raceRepo.Update(race); err != nil {

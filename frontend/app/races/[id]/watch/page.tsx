@@ -104,7 +104,7 @@ export default async function WatchPage({ params }: WatchPageProps) {
 
               {/* Race Stats Section - Collapsible */}
               <div className="shrink-0">
-                 <RaceStats />
+                 <RaceStats race={race} />
               </div>
 
               {/* Points Display Section - Collapsible */}

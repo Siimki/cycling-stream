@@ -11,6 +11,11 @@ export interface Race {
   category?: string;
   is_free: boolean;
   price_cents: number;
+  stage_name?: string;
+  stage_type?: string;
+  elevation_meters?: number;
+  estimated_finish_time?: string;
+  stage_length_km?: number;
   created_at: string;
   updated_at: string;
 }

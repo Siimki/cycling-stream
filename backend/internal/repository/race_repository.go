@@ -18,7 +18,8 @@ func NewRaceRepository(db *sql.DB) *RaceRepository {
 func (r *RaceRepository) GetAll() ([]models.Race, error) {
 	query := `
 		SELECT id, name, description, start_date, end_date, location, category, 
-		       is_free, price_cents, created_at, updated_at
+		       is_free, price_cents, stage_name, stage_type, elevation_meters, 
+		       estimated_finish_time, stage_length_km, created_at, updated_at
 		FROM races
 		ORDER BY start_date DESC NULLS LAST, created_at DESC
 	`
@@ -42,6 +43,11 @@ func (r *RaceRepository) GetAll() ([]models.Race, error) {
 			&race.Category,
 			&race.IsFree,
 			&race.PriceCents,
+			&race.StageName,
+			&race.StageType,
+			&race.ElevationMeters,
+			&race.EstimatedFinishTime,
+			&race.StageLengthKm,
 			&race.CreatedAt,
 			&race.UpdatedAt,
 		)
@@ -66,7 +72,8 @@ func (r *RaceRepository) GetAll() ([]models.Race, error) {
 func (r *RaceRepository) GetByID(id string) (*models.Race, error) {
 	query := `
 		SELECT id, name, description, start_date, end_date, location, category, 
-		       is_free, price_cents, created_at, updated_at
+		       is_free, price_cents, stage_name, stage_type, elevation_meters, 
+		       estimated_finish_time, stage_length_km, created_at, updated_at
 		FROM races
 		WHERE id = $1
 	`
@@ -82,6 +89,11 @@ func (r *RaceRepository) GetByID(id string) (*models.Race, error) {
 		&race.Category,
 		&race.IsFree,
 		&race.PriceCents,
+		&race.StageName,
+		&race.StageType,
+		&race.ElevationMeters,
+		&race.EstimatedFinishTime,
+		&race.StageLengthKm,
 		&race.CreatedAt,
 		&race.UpdatedAt,
 	)
@@ -98,8 +110,9 @@ func (r *RaceRepository) GetByID(id string) (*models.Race, error) {
 
 func (r *RaceRepository) Create(race *models.Race) error {
 	query := `
-		INSERT INTO races (name, description, start_date, end_date, location, category, is_free, price_cents)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		INSERT INTO races (name, description, start_date, end_date, location, category, is_free, price_cents,
+		                   stage_name, stage_type, elevation_meters, estimated_finish_time, stage_length_km)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
 		RETURNING id, created_at, updated_at
 	`
 
@@ -113,6 +126,11 @@ func (r *RaceRepository) Create(race *models.Race) error {
 		race.Category,
 		race.IsFree,
 		race.PriceCents,
+		race.StageName,
+		race.StageType,
+		race.ElevationMeters,
+		race.EstimatedFinishTime,
+		race.StageLengthKm,
 	).Scan(&race.ID, &race.CreatedAt, &race.UpdatedAt)
 
 	if err != nil {
@@ -126,7 +144,9 @@ func (r *RaceRepository) Update(race *models.Race) error {
 	query := `
 		UPDATE races
 		SET name = $2, description = $3, start_date = $4, end_date = $5, 
-		    location = $6, category = $7, is_free = $8, price_cents = $9, updated_at = CURRENT_TIMESTAMP
+		    location = $6, category = $7, is_free = $8, price_cents = $9,
+		    stage_name = $10, stage_type = $11, elevation_meters = $12,
+		    estimated_finish_time = $13, stage_length_km = $14, updated_at = CURRENT_TIMESTAMP
 		WHERE id = $1
 		RETURNING updated_at
 	`
@@ -142,6 +162,11 @@ func (r *RaceRepository) Update(race *models.Race) error {
 		race.Category,
 		race.IsFree,
 		race.PriceCents,
+		race.StageName,
+		race.StageType,
+		race.ElevationMeters,
+		race.EstimatedFinishTime,
+		race.StageLengthKm,
 	).Scan(&race.UpdatedAt)
 
 	if err == sql.ErrNoRows {
