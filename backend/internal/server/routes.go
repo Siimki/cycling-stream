@@ -143,7 +143,8 @@ func setupUserRoutes(app *fiber.App, authHandler *handlers.AuthHandler, paymentH
 	user := app.Group("/users", userAuth, middleware.StandardRateLimiter(), csrf)
 	user.Get("/me", authHandler.GetProfile)
 	user.Post("/me/password", authHandler.ChangePassword)
-	user.Post("/me/points/bonus", authHandler.AwardBonusPoints)
+	user.Post("/me/points/tick", authHandler.AwardWatchPoints) // 10 points for watching
+	user.Post("/me/points/bonus", authHandler.AwardBonusPoints) // 50 points for claim bonus
 	user.Post("/payments/create-checkout", paymentHandler.CreateCheckout)
 	user.Post("/watch/sessions/start", watchHandler.StartSession)
 	user.Post("/watch/sessions/end", watchHandler.EndSession)

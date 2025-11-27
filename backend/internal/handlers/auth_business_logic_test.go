@@ -398,8 +398,8 @@ func TestAuthHandler_AwardBonusPoints(t *testing.T) {
 		json.Unmarshal(body, &result)
 
 		assert.Equal(t, "Bonus points awarded", result["message"])
-		assert.Equal(t, float64(10), result["bonus_points"])
-		assert.GreaterOrEqual(t, result["total_points"].(float64), float64(10))
+		assert.Equal(t, float64(50), result["bonus_points"])
+		assert.GreaterOrEqual(t, result["total_points"].(float64), float64(50))
 	})
 
 	t.Run("AwardBonusPoints can be called multiple times", func(t *testing.T) {
@@ -422,8 +422,8 @@ func TestAuthHandler_AwardBonusPoints(t *testing.T) {
 		var result map[string]interface{}
 		json.Unmarshal(body, &result)
 
-		// Should have at least 40 points (10 * 4 calls)
-		assert.GreaterOrEqual(t, result["total_points"].(float64), float64(40))
+		// Should have at least 200 points (50 * 4 calls)
+		assert.GreaterOrEqual(t, result["total_points"].(float64), float64(200))
 	})
 }
 

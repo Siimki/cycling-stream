@@ -99,6 +99,24 @@ export async function changePassword(
   }
 }
 
+export async function awardWatchPoints(token: string): Promise<number> {
+  const response = await fetch(`${API_URL}/users/me/points/tick`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Failed to award watch points' }));
+    throw new Error(error.error || 'Failed to award watch points');
+  }
+
+  const data = await response.json();
+  return data.total_points as number;
+}
+
 export async function awardBonusPoints(token: string): Promise<number> {
   const response = await fetch(`${API_URL}/users/me/points/bonus`, {
     method: 'POST',

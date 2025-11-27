@@ -321,6 +321,42 @@ func (h *AuthHandler) ChangePassword(c *fiber.Ctx) error {
 	})
 }
 
+// AwardWatchPoints grants points for watching (automatic tick every 10 seconds).
+// This is called automatically while the user is watching a race.
+func (h *AuthHandler) AwardWatchPoints(c *fiber.Ctx) error {
+	userID, ok := requireUserID(c, "Authentication required")
+	if !ok {
+		return nil
+	}
+
+	// Award 10 points per 10-second watch tick
+	const watchPoints = 10
+
+	if err := h.userRepo.AddPoints(userID, watchPoints); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Failed to award watch points",
+		})
+	}
+
+	user, err := h.userRepo.GetByID(userID)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Failed to load updated user points",
+		})
+	}
+	if user == nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+			"error": "User not found",
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"message":      "Watch points awarded",
+		"points":       watchPoints,
+		"total_points": user.Points,
+	})
+}
+
 // AwardBonusPoints grants a fixed bonus of points to the authenticated user.
 // This is used for actions like collecting a watch bonus in the UI.
 func (h *AuthHandler) AwardBonusPoints(c *fiber.Ctx) error {
@@ -329,7 +365,8 @@ func (h *AuthHandler) AwardBonusPoints(c *fiber.Ctx) error {
 		return nil
 	}
 
-	const bonusPoints = 10
+	// Award 50 points per bonus claim
+	const bonusPoints = 50
 
 	if err := h.userRepo.AddPoints(userID, bonusPoints); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{

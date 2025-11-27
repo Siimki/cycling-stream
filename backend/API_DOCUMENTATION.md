@@ -503,27 +503,45 @@ Change the user's password.
 
 ---
 
-### Award Bonus Points
+### Award Watch Points (Automatic Tick)
 
-**POST** `/users/me/points/bonus`
+**POST** `/users/me/points/tick`
 
-Award bonus points to the user (admin feature, but accessible to users for testing).
+Award points for watching (called automatically every 10 seconds while watching).
+Awards 10 points per tick.
 
 **Authentication:** Required
 
-**Request:**
-```json
-{
-  "points": 100,
-  "reason": "Bonus for watching"
-}
-```
+**Request:** No body required
 
 **Response:**
 ```json
 {
-  "message": "Points awarded",
-  "new_total": 250
+  "message": "Watch points awarded",
+  "points": 10,
+  "total_points": 150
+}
+```
+
+---
+
+### Award Bonus Points (Manual Claim)
+
+**POST** `/users/me/points/bonus`
+
+Award bonus points to the user (manual claim button in UI).
+Awards a fixed 50 points per claim.
+
+**Authentication:** Required
+
+**Request:** No body required
+
+**Response:**
+```json
+{
+  "message": "Bonus points awarded",
+  "bonus_points": 50,
+  "total_points": 200
 }
 ```
 

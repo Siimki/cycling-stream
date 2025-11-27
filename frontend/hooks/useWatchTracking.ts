@@ -1,7 +1,7 @@
  'use client';
  
  import { useEffect, useRef, useState } from 'react';
- import { getToken, awardBonusPoints } from '@/lib/auth';
+ import { getToken, awardWatchPoints } from '@/lib/auth';
  import { startWatchSession, endWatchSession } from '@/lib/watch';
  import { useAuth } from '@/contexts/AuthContext';
  import { POINTS_ACCRUAL_INTERVAL_MS } from '@/constants/intervals';
@@ -109,8 +109,8 @@
             return;
           }
 
-          // Award 10 points via existing bonus endpoint
-          await awardBonusPoints(currentToken);
+          // Award 10 points via watch tick endpoint
+          await awardWatchPoints(currentToken);
           // Refresh user data in auth context
           refreshUser();
         } catch (error) {
