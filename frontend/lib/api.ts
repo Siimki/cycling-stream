@@ -1,5 +1,5 @@
 import { API_URL } from './config';
-import { APIErrorHandler, type APIError } from './error-handler';
+import { APIErrorHandler } from './error-handler';
 
 export interface Race {
   id: string;

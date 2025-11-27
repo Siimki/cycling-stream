@@ -14,14 +14,14 @@ import (
 func loadRaceOr404(c *fiber.Ctx, raceRepo *repository.RaceRepository, id string) (*models.Race, bool) {
 	race, err := raceRepo.GetByID(id)
 	if err != nil {
-		c.Status(fiber.StatusInternalServerError).JSON(APIError{
+		_ = c.Status(fiber.StatusInternalServerError).JSON(APIError{
 			Error: "Failed to fetch race",
 		})
 		return nil, false
 	}
 
 	if race == nil {
-		c.Status(fiber.StatusNotFound).JSON(APIError{
+		_ = c.Status(fiber.StatusNotFound).JSON(APIError{
 			Error: "Race not found",
 		})
 		return nil, false
@@ -38,14 +38,14 @@ func loadRaceOr404(c *fiber.Ctx, raceRepo *repository.RaceRepository, id string)
 func loadStreamOr404(c *fiber.Ctx, streamRepo *repository.StreamRepository, raceID string, notFoundMessage string) (*models.Stream, bool) {
 	stream, err := streamRepo.GetByRaceID(raceID)
 	if err != nil {
-		c.Status(fiber.StatusInternalServerError).JSON(APIError{
+		_ = c.Status(fiber.StatusInternalServerError).JSON(APIError{
 			Error: "Failed to fetch stream",
 		})
 		return nil, false
 	}
 
 	if stream == nil {
-		c.Status(fiber.StatusNotFound).JSON(APIError{
+		_ = c.Status(fiber.StatusNotFound).JSON(APIError{
 			Error: notFoundMessage,
 		})
 		return nil, false
