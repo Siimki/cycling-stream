@@ -23,3 +23,11 @@ type PublicUser struct {
 	CreatedAt         time.Time `json:"created_at"`
 }
 
+// LeaderboardEntry represents a user entry in the leaderboard
+type LeaderboardEntry struct {
+	ID                string  `json:"id"`
+	Name              *string `json:"name,omitempty"`
+	Points            int     `json:"points"`
+	TotalWatchMinutes int     `json:"total_watch_minutes"`
+}
+

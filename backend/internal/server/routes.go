@@ -96,6 +96,7 @@ func setupPublicRoutes(app *fiber.App, healthHandler *handlers.HealthHandler, ra
 	public := app.Group("", middleware.LenientRateLimiter())
 	public.Get("/health", healthHandler.GetHealth)
 	public.Get("/races", raceHandler.GetRaces)
+	public.Get("/leaderboard", userHandler.GetLeaderboard)
 	// Public user profile (no auth required) - uses /profiles to avoid conflict with authenticated /users group
 	public.Get("/profiles/:id", userHandler.GetPublicProfile)
 	// General race routes (must be after more specific routes in other groups, but here strict ordering depends on framework)

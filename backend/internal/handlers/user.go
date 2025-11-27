@@ -59,3 +59,15 @@ func (h *UserHandler) GetPublicProfile(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(response)
 }
 
+// GetLeaderboard returns all users with their points and watch time for the leaderboard
+func (h *UserHandler) GetLeaderboard(c *fiber.Ctx) error {
+	entries, err := h.userRepo.GetLeaderboard()
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Failed to fetch leaderboard",
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(entries)
+}
+

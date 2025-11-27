@@ -78,6 +78,14 @@ export function Navigation({ variant = "full" }: NavigationProps) {
                 >
                   Replays
                 </Button>
+                <Link href="/leaderboard">
+                  <Button
+                    variant="ghost"
+                    className="text-muted-foreground hover:text-foreground hover:bg-muted/50 text-sm font-medium h-9 px-4 rounded-lg transition-colors"
+                  >
+                    Leaderboard
+                  </Button>
+                </Link>
               </nav>
             )}
           </div>

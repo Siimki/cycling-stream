@@ -166,3 +166,52 @@ func (r *UserRepository) AddPoints(userID string, delta int) error {
 
 	return nil
 }
+
+// GetLeaderboard returns all users with their points and total watch time, ordered by points DESC
+func (r *UserRepository) GetLeaderboard() ([]models.LeaderboardEntry, error) {
+	query := `
+		SELECT 
+			u.id,
+			u.name,
+			u.points,
+			COALESCE(SUM(ws.duration_seconds) / 60, 0)::int as total_watch_minutes
+		FROM users u
+		LEFT JOIN watch_sessions ws ON u.id = ws.user_id AND ws.duration_seconds IS NOT NULL
+		GROUP BY u.id, u.name, u.points
+		ORDER BY u.points DESC, total_watch_minutes DESC
+	`
+
+	rows, err := r.db.Query(query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get leaderboard: %w", err)
+	}
+	defer rows.Close()
+
+	var entries []models.LeaderboardEntry
+	for rows.Next() {
+		var entry models.LeaderboardEntry
+		var name sql.NullString
+
+		err := rows.Scan(
+			&entry.ID,
+			&name,
+			&entry.Points,
+			&entry.TotalWatchMinutes,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan leaderboard entry: %w", err)
+		}
+
+		if name.Valid {
+			entry.Name = &name.String
+		}
+
+		entries = append(entries, entry)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating leaderboard entries: %w", err)
+	}
+
+	return entries, nil
+}

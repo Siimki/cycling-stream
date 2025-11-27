@@ -104,3 +104,14 @@ export async function getPublicUser(userId: string): Promise<PublicUser> {
   return fetchAPI<PublicUser>(`/profiles/${userId}`);
 }
 
+export interface LeaderboardEntry {
+  id: string;
+  name?: string;
+  points: number;
+  total_watch_minutes: number;
+}
+
+export async function getLeaderboard(): Promise<LeaderboardEntry[]> {
+  return fetchAPI<LeaderboardEntry[]>('/leaderboard');
+}
+
