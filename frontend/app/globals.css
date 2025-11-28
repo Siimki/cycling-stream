@@ -275,6 +275,16 @@
   scrollbar-color: oklch(0.25 0.005 260) oklch(0.12 0.005 260);
 }
 
+/* Hide scrollbar but keep scrolling functionality */
+.scrollbar-hide {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
+
 /* Subtle glow effect */
 .glow-primary {
   box-shadow: 0 0 20px oklch(0.72 0.19 155 / 0.15);

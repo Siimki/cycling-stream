@@ -77,7 +77,7 @@ export default async function WatchPage({ params }: WatchPageProps) {
           <WatchTrackingProvider raceId={id}>
             <HudStatsProvider>
               {/* Left Column: Video & Stats - Scrollable */}
-              <div className="flex-1 overflow-y-auto bg-black relative flex flex-col">
+              <div className="flex-1 overflow-y-auto scrollbar-hide bg-black relative flex flex-col">
                 <div className="flex-1 flex flex-col min-h-[50vh]">
                   {/* Video Player Section - Centered */}
                   <div className="w-full flex-1 flex items-center justify-center bg-black">

@@ -37,7 +37,7 @@ export function HudToggleButton({
       <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-white">
         {isActive ? <Minus className="h-4 w-4" /> : <List className="h-4 w-4" />}
       </span>
-      <span className="text-[0.5rem] tracking-[0.3em] min-w-[4.5rem] text-center">{label}</span>
+      <span className="text-[0.65rem] tracking-[0.3em] min-w-[4.5rem] text-center">{label}</span>
       <span
         className={cn(
           "h-2 w-2 rounded-full transition-all duration-200",
