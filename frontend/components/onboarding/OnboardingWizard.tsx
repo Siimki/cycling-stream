@@ -128,7 +128,6 @@ export function OnboardingWizard() {
           challenges: data.notifications.challenges,
           points: data.notifications.points,
           races: data.notifications.races,
-          devices: data.device, // Store all devices in notification preferences
         },
         onboarding_completed: true,
       };

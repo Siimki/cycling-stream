@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import { Zap, Search, Bell, User, ChevronDown, Menu, LogOut, Settings } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/contexts/AuthContext"
+import UserStats from "@/components/user/UserStats"
 
 interface NavigationProps {
   variant?: "full" | "minimal"
@@ -96,6 +97,16 @@ export function Navigation({ variant = "full" }: NavigationProps) {
                     Leaderboard
                   </Button>
                 </Link>
+                {isAuthenticated && (
+                  <Link href="/missions">
+                    <Button
+                      variant="ghost"
+                      className="text-muted-foreground hover:text-foreground hover:bg-muted/50 text-sm font-medium h-9 px-4 rounded-lg transition-colors"
+                    >
+                      Missions
+                    </Button>
+                  </Link>
+                )}
               </nav>
             )}
           </div>
@@ -124,6 +135,13 @@ export function Navigation({ variant = "full" }: NavigationProps) {
                   </Button>
                 )}
               </>
+            )}
+
+            {/* User Stats (XP, Level, Points, Streak) */}
+            {isAuthenticated && variant === "full" && (
+              <div className="hidden lg:flex items-center">
+                <UserStats compact={true} />
+              </div>
             )}
 
             {/* Auth buttons or User menu */}

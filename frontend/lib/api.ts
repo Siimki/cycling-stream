@@ -286,3 +286,109 @@ export async function getRecommendedReplays(): Promise<Race[]> {
   return fetchAuthenticatedAPI<Race[]>('/users/me/recommendations/replays');
 }
 
+// Mission types and interfaces
+export type MissionType = 'watch_time' | 'chat_message' | 'watch_race' | 'follow_series' | 'streak' | 'predict_winner';
+
+export interface Mission {
+  id: string;
+  mission_type: MissionType;
+  title: string;
+  description?: string;
+  points_reward: number;
+  target_value: number;
+  valid_from: string;
+  valid_until?: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface UserMission {
+  id: string;
+  user_id: string;
+  mission_id: string;
+  progress: number;
+  completed_at?: string;
+  claimed_at?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// UserMissionWithDetails has all fields flattened (Go embedded structs serialize as flat JSON)
+// Note: When Go embeds structs, duplicate fields from Mission overwrite UserMission fields
+// So 'id', 'created_at', 'updated_at' come from Mission, not UserMission
+export interface UserMissionWithDetails {
+  // From UserMission (but id/created_at/updated_at are overwritten by Mission)
+  id: string; // This is actually Mission.id, not UserMission.id
+  user_id: string;
+  mission_id: string;
+  progress: number;
+  completed_at?: string;
+  claimed_at?: string;
+  created_at: string; // This is actually Mission.created_at
+  updated_at: string; // This is actually Mission.updated_at
+  
+  // From Mission
+  mission_type: MissionType;
+  title: string;
+  description?: string;
+  points_reward: number;
+  target_value: number;
+  valid_from: string;
+  valid_until?: string;
+  is_active: boolean;
+}
+
+export async function getUserMissions(): Promise<UserMissionWithDetails[]> {
+  return fetchAuthenticatedAPI<UserMissionWithDetails[]>('/users/me/missions');
+}
+
+export async function getActiveMissions(): Promise<Mission[]> {
+  return fetchAPI<Mission[]>('/missions/active');
+}
+
+export async function claimMissionReward(missionId: string): Promise<{ message: string }> {
+  return fetchAuthenticatedAPI<{ message: string }>(`/users/me/missions/${missionId}/claim`, {
+    method: 'POST',
+  });
+}
+
+// XP and Level types and API
+export interface XPProgress {
+  user_id: string;
+  xp_total: number;
+  level: number;
+  xp_for_current_level_start: number;
+  xp_for_next_level: number;
+  xp_to_next_level: number;
+  progress_in_current_level: number;
+}
+
+export async function getUserXP(): Promise<XPProgress> {
+  return fetchAuthenticatedAPI<XPProgress>('/users/me/xp');
+}
+
+// Weekly stats types and API
+export interface WeeklyGoalProgress {
+  user_id: string;
+  week_number: string;
+  watch_minutes: number;
+  chat_messages: number;
+  weekly_goal_completed: boolean;
+  current_streak_weeks: number;
+  best_streak_weeks: number;
+  can_claim_reward: boolean;
+  reward_xp: number;
+  reward_points: number;
+}
+
+export async function getUserWeekly(): Promise<WeeklyGoalProgress> {
+  return fetchAuthenticatedAPI<WeeklyGoalProgress>('/users/me/weekly');
+}
+
+export async function claimWeeklyReward(): Promise<{ message: string }> {
+  return fetchAuthenticatedAPI<{ message: string }>('/users/me/weekly/claim', {
+    method: 'POST',
+  });
+}
+

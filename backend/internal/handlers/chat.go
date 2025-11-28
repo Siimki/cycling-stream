@@ -11,6 +11,7 @@ import (
 	"github.com/cyclingstream/backend/internal/logger"
 	"github.com/cyclingstream/backend/internal/models"
 	"github.com/cyclingstream/backend/internal/repository"
+	"github.com/cyclingstream/backend/internal/services"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/websocket/v2"
 	"github.com/google/uuid"
@@ -18,12 +19,13 @@ import (
 )
 
 type ChatHandler struct {
-	chatRepo    *repository.ChatRepository
-	raceRepo    *repository.RaceRepository
-	streamRepo  *repository.StreamRepository
-	userRepo    *repository.UserRepository
-	hub         *chat.Hub
-	rateLimiter *chat.RateLimiter
+	chatRepo       *repository.ChatRepository
+	raceRepo       *repository.RaceRepository
+	streamRepo     *repository.StreamRepository
+	userRepo       *repository.UserRepository
+	hub            *chat.Hub
+	rateLimiter    *chat.RateLimiter
+	missionTriggers *services.MissionTriggers
 }
 
 func NewChatHandler(
@@ -33,14 +35,16 @@ func NewChatHandler(
 	userRepo *repository.UserRepository,
 	hub *chat.Hub,
 	rateLimiter *chat.RateLimiter,
+	missionTriggers *services.MissionTriggers,
 ) *ChatHandler {
 	return &ChatHandler{
-		chatRepo:    chatRepo,
-		raceRepo:    raceRepo,
-		streamRepo:  streamRepo,
-		userRepo:    userRepo,
-		hub:         hub,
-		rateLimiter: rateLimiter,
+		chatRepo:        chatRepo,
+		raceRepo:        raceRepo,
+		streamRepo:      streamRepo,
+		userRepo:        userRepo,
+		hub:             hub,
+		rateLimiter:     rateLimiter,
+		missionTriggers: missionTriggers,
 	}
 }
 
@@ -273,6 +277,26 @@ func (h *ChatHandler) handleSendMessage(client *chat.Client, raceID string, msg 
 	wsMsg := chat.NewMessageWSMessage(chatMsg)
 	if wsBytes, err := json.Marshal(wsMsg); err == nil {
 		h.hub.BroadcastToRoom(raceID, wsBytes)
+	}
+
+	// Trigger mission progress updates for chat messages
+	if h.missionTriggers != nil && userID != nil && *userID != "" {
+		// Check if stream is live
+		isLive := false
+		if h.streamRepo != nil {
+			stream, err := h.streamRepo.GetByRaceID(raceID)
+			if err == nil && stream != nil && stream.Status == "live" {
+				isLive = true
+			}
+		}
+		if err := h.missionTriggers.OnChatMessage(*userID, raceID, isLive); err != nil {
+			// Log error but don't fail the request
+			// Mission progress is best-effort
+		}
+		// Check and complete any missions that may have been completed
+		if err := h.missionTriggers.CheckAndCompleteAll(*userID); err != nil {
+			// Log error but don't fail the request
+		}
 	}
 }
 

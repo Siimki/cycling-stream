@@ -37,6 +37,7 @@ export function StreamProvider({ raceId, requiresLogin, initialStream }: StreamP
         streamType={stream?.stream_type}
         sourceId={stream?.source_id}
         requiresLogin={requiresLogin}
+        raceId={raceId}
       />
     </>
   );

@@ -13,9 +13,10 @@ interface VideoPlayerProps {
   streamType?: string;
   sourceId?: string;
   requiresLogin?: boolean; // Kept for backward compatibility but not used
+  raceId?: string;
 }
 
-export default function VideoPlayer({ streamUrl, status, streamType, sourceId }: VideoPlayerProps) {
+export default function VideoPlayer({ streamUrl, status, streamType, sourceId, raceId }: VideoPlayerProps) {
   const [showControls, setShowControls] = useState(false);
   const [showQualityMenu, setShowQualityMenu] = useState(false);
   const [showSpeedMenu, setShowSpeedMenu] = useState(false);

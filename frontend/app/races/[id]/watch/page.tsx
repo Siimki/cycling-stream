@@ -68,11 +68,11 @@ export default async function WatchPage({ params }: WatchPageProps) {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <StreamHeader />
+        <StreamHeader />
 
-      <main className="flex-1 flex flex-col lg:flex-row">
-        <WatchTrackingProvider raceId={id}>
-          <HudStatsProvider>
+        <main className="flex-1 flex flex-col lg:flex-row">
+          <WatchTrackingProvider raceId={id}>
+            <HudStatsProvider>
             {/* Main content area - Flex Col for Video + Stats + Points */}
             <div className="flex-1 flex flex-col bg-background relative min-w-0">
               
@@ -103,10 +103,10 @@ export default async function WatchPage({ params }: WatchPageProps) {
 
             {/* Chat sidebar - Fixed height, scrollable */}
             <ChatWrapper raceId={id} requiresLogin={requiresLogin} isLive={isLive} />
-          </HudStatsProvider>
-        </WatchTrackingProvider>
-      </main>
-      <Footer />
-    </div>
+            </HudStatsProvider>
+          </WatchTrackingProvider>
+        </main>
+        <Footer />
+      </div>
   );
 }
