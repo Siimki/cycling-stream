@@ -73,7 +73,7 @@ export function Navigation({ variant = "full" }: NavigationProps) {
                 <Link href="/">
                   <Button 
                     variant="ghost" 
-                    className={`relative text-lg font-medium h-11 px-4 py-2.5 transition-colors ${
+                    className={`relative text-xl font-semibold h-12 px-5 py-3 transition-colors ${
                       isActive('/') 
                         ? 'text-foreground' 
                         : 'text-muted-foreground hover:text-foreground hover:bg-muted/30'
@@ -90,7 +90,7 @@ export function Navigation({ variant = "full" }: NavigationProps) {
                   <Link href="/for-you">
                     <Button
                       variant="ghost"
-                      className={`relative text-lg font-medium h-11 px-4 py-2.5 transition-colors ${
+                      className={`relative text-xl font-semibold h-12 px-5 py-3 transition-colors ${
                         isActive('/for-you')
                           ? 'text-foreground'
                           : 'text-muted-foreground hover:text-foreground hover:bg-muted/30'
@@ -106,7 +106,7 @@ export function Navigation({ variant = "full" }: NavigationProps) {
                 <Link href="/races">
                   <Button
                     variant="ghost"
-                    className={`relative text-lg font-medium h-11 px-4 py-2.5 transition-colors ${
+                    className={`relative text-xl font-semibold h-12 px-5 py-3 transition-colors ${
                       isActive('/races')
                         ? 'text-foreground'
                         : 'text-muted-foreground hover:text-foreground hover:bg-muted/30'
@@ -120,14 +120,14 @@ export function Navigation({ variant = "full" }: NavigationProps) {
                 </Link>
                 <Button
                   variant="ghost"
-                  className="text-lg font-medium text-muted-foreground hover:text-foreground hover:bg-muted/30 h-11 px-4 py-2.5 transition-colors"
+                  className="text-xl font-semibold text-muted-foreground hover:text-foreground hover:bg-muted/30 h-12 px-5 py-3 transition-colors"
                 >
                   Replays
                 </Button>
                 <Link href="/leaderboard">
                   <Button
                     variant="ghost"
-                    className={`relative text-lg font-medium h-11 px-4 py-2.5 transition-colors ${
+                    className={`relative text-xl font-semibold h-12 px-5 py-3 transition-colors ${
                       isActive('/leaderboard')
                         ? 'text-foreground'
                         : 'text-muted-foreground hover:text-foreground hover:bg-muted/30'
@@ -143,7 +143,7 @@ export function Navigation({ variant = "full" }: NavigationProps) {
                   <Link href="/missions">
                     <Button
                       variant="ghost"
-                      className={`relative text-lg font-medium h-11 px-4 py-2.5 transition-colors ${
+                      className={`relative text-xl font-semibold h-12 px-5 py-3 transition-colors ${
                         isActive('/missions')
                           ? 'text-foreground'
                           : 'text-muted-foreground hover:text-foreground hover:bg-muted/30'

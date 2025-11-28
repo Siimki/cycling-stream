@@ -67,22 +67,21 @@ export default async function WatchPage({ params }: WatchPageProps) {
   const requiresLogin = race.requires_login || false;
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-        <StreamHeader />
+    <div className="h-screen flex flex-col bg-black overflow-hidden">
+        {/* Header - Fixed height */}
+        <div className="flex-none">
+          <StreamHeader />
+        </div>
 
-        <main className="flex-1">
+        <main className="flex-1 flex min-h-0">
           <WatchTrackingProvider raceId={id}>
             <HudStatsProvider>
-              {/* Consistent spacing between nav and content (32px) */}
-              <div className="pt-8">
-                {/* 12-column responsive grid layout with gutters - same padding as nav */}
-                <div className="grid grid-cols-12 gap-4 lg:gap-6 px-6 lg:px-8">
-                {/* Main content area - 12 columns on mobile, 8 on desktop, 9 on large screens */}
-                <div className="col-span-12 lg:col-span-8 xl:col-span-9 flex flex-col bg-background relative min-w-0">
-                  
-                  {/* Video Player Section - Proper height on all devices with max-width constraint */}
-                  <div className="w-full bg-background flex items-center justify-center relative py-4 lg:py-6">
-                    <div className="w-full aspect-video max-w-full">
+              {/* Left Column: Video & Stats - Scrollable */}
+              <div className="flex-1 overflow-y-auto bg-black relative flex flex-col">
+                <div className="flex-1 flex flex-col min-h-[50vh]">
+                  {/* Video Player Section - Centered */}
+                  <div className="w-full flex-1 flex items-center justify-center bg-black">
+                    <div className="w-full max-w-[1600px] aspect-video mx-auto">
                       <AuthRequiredWrapper requiresLogin={requiresLogin} raceId={id}>
                         <StreamProvider
                           raceId={id}
@@ -93,28 +92,43 @@ export default async function WatchPage({ params }: WatchPageProps) {
                     </div>
                   </div>
 
-                  {/* Race Stats Section - Collapsible */}
-                  <div className="shrink-0">
-                     <RaceStats race={race} />
+                  {/* Race Stats & Info - Below video */}
+                  <div className="w-full bg-background border-t border-border/20">
+                    <div className="max-w-[1600px] mx-auto">
+                      <RaceStats race={race} />
+                      <PointsDisplay />
+                    </div>
                   </div>
-
-                  {/* Points Display Section - Collapsible */}
-                  <div className="shrink-0">
-                     <PointsDisplay />
-                  </div>
-
-                </div>
-
-                {/* Chat sidebar - 12 columns on mobile, 4 on desktop, 3 on large screens */}
-                <div className="col-span-12 lg:col-span-4 xl:col-span-3">
-                  <ChatWrapper raceId={id} requiresLogin={requiresLogin} isLive={isLive} />
-                </div>
+                  
+                  {/* Footer inside scrollable area */}
+                  <Footer />
                 </div>
               </div>
+
+              {/* Right Column: Chat - Fixed width on desktop */}
+              <div className="hidden lg:flex flex-none w-80 xl:w-96 flex-col border-l border-border/20 bg-background h-full">
+                <ChatWrapper 
+                  raceId={id} 
+                  requiresLogin={requiresLogin} 
+                  isLive={isLive} 
+                  className="h-full border-0"
+                />
+              </div>
             </HudStatsProvider>
+
+            {/* Mobile Chat Placeholder - visible only on mobile/tablet, potentially togglable or stacked */}
+            <div className="lg:hidden flex-none h-[50vh] border-t border-border/20">
+                <HudStatsProvider>
+                    <ChatWrapper 
+                        raceId={id} 
+                        requiresLogin={requiresLogin} 
+                        isLive={isLive} 
+                        className="h-full border-0"
+                    />
+                </HudStatsProvider>
+            </div>
           </WatchTrackingProvider>
         </main>
-        <Footer />
       </div>
   );
 }

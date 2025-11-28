@@ -46,20 +46,20 @@ export function PointsDisplay() {
 
       {/* Collapsible Content - Compact badge/card format */}
       <div
-        className={`px-4 md:px-5 lg:px-6 py-3 md:py-4 transition-all duration-300 ease-in-out ${
-          isVisible ? "max-h-[120px] opacity-100" : "max-h-0 opacity-0 overflow-hidden py-0"
+        className={`px-4 md:px-5 lg:px-6 py-4 md:py-5 transition-all duration-300 ease-in-out ${
+          isVisible ? "max-h-[140px] opacity-100" : "max-h-0 opacity-0 overflow-hidden py-0"
         }`}
       >
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-4">
           {/* Main badge: Tier · Points */}
           <div className="flex items-center gap-3">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-muted/30 rounded-lg border border-border/50">
-              <Zap className="w-4 h-4 text-primary" />
-              <span className={`text-sm font-semibold ${currentTier.color}`}>
+            <div className="inline-flex items-center gap-2.5 px-4 py-2 bg-muted/30 rounded-lg border border-border/50">
+              <Zap className="w-5 h-5 text-primary" />
+              <span className={`text-base font-bold ${currentTier.color}`}>
                 {currentTier.name}
               </span>
-              <span className="text-muted-foreground">·</span>
-              <span className="text-sm font-semibold text-foreground tabular-nums">
+              <span className="text-muted-foreground font-medium">·</span>
+              <span className="text-base font-bold text-foreground tabular-nums">
                 {points.toLocaleString()} pts
               </span>
             </div>
@@ -67,25 +67,25 @@ export function PointsDisplay() {
 
           {/* Progress to next tier */}
           {nextTier && (
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-4">
               <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-xs-label text-muted-foreground">
-                    {nextTier.min - points} to {nextTier.name}
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium text-muted-foreground tracking-wide">
+                    <span className="text-foreground font-semibold">{nextTier.min - points}</span> points to {nextTier.name}
                   </span>
-                  <span className="text-xs text-muted-foreground tabular-nums">
+                  <span className="text-sm font-medium text-muted-foreground tabular-nums">
                     {Math.round(progressToNext)}%
                   </span>
                 </div>
-                <div className="h-1.5 bg-muted/80 rounded-full overflow-hidden">
+                <div className="h-2 bg-muted/80 rounded-full overflow-hidden">
                   <div
                     className="h-full bg-gradient-to-r from-primary to-primary/80 rounded-full transition-all duration-500"
                     style={{ width: `${progressToNext}%` }}
                   />
                 </div>
               </div>
-              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <Clock className="w-3.5 h-3.5" />
+              <div className="flex items-center gap-2 text-sm text-muted-foreground font-medium">
+                <Clock className="w-4 h-4" />
                 <span className="tabular-nums">{formatTime(watchTime)}</span>
               </div>
             </div>

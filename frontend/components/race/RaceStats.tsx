@@ -67,39 +67,39 @@ export function RaceStats({ race, compact = false }: RaceStatsProps) {
         }`}
       >
       {/* Stage Name & Distance - Mobile: Full width, Desktop: Separate sections */}
-      <div className="flex items-center justify-between px-5 md:px-6 py-3 md:py-0 md:border-r border-border/30 md:min-w-[180px] lg:min-w-[220px]">
+      <div className="flex items-center justify-between px-5 md:px-6 py-4 md:py-2 md:border-r border-border/30 md:min-w-[240px] lg:min-w-[300px]">
         <div className="flex-1 min-w-0">
-          <p className="text-xs-label text-primary mb-1 truncate">{raceName}</p>
-          <h3 className="text-base md:text-lg font-semibold tracking-tight truncate text-foreground">{stageDisplay}</h3>
+          <p className="text-sm-label text-primary mb-1.5 truncate">{raceName}</p>
+          <h3 className="text-lg md:text-xl font-bold tracking-tight truncate text-foreground">{stageDisplay}</h3>
         </div>
         {/* Mobile: Show stage length inline */}
         {race?.stage_length_km && (
-          <div className="md:hidden flex items-center gap-2 ml-3 bg-muted/50 px-2 py-1 rounded-md">
-            <MapPin className="w-4 h-4 shrink-0 text-primary" />
-            <span className="text-sm font-semibold tabular-nums text-foreground">{stageLength} km</span>
+          <div className="md:hidden flex items-center gap-2 ml-3 bg-muted/50 px-3 py-1.5 rounded-md">
+            <MapPin className="w-5 h-5 shrink-0 text-primary" />
+            <span className="text-base font-bold tabular-nums text-foreground">{stageLength} km</span>
           </div>
         )}
       </div>
 
       {/* Stats Grid - Hidden on mobile, shown on tablet+ */}
       {(race?.elevation_meters || race?.estimated_finish_time) && (
-        <div className="hidden md:flex items-center px-6 gap-6 lg:gap-8 border-r border-border/30">
+        <div className="hidden md:flex items-center px-8 gap-8 lg:gap-12 border-r border-border/30">
           {race?.elevation_meters && (
-            <div className="py-3">
-              <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                <Mountain className="w-4 h-4 text-primary/70" />
-                <span className="text-xs-label">Elevation</span>
+            <div className="py-4">
+              <div className="flex items-center gap-2.5 text-muted-foreground mb-1.5">
+                <Mountain className="w-5 h-5 text-primary/70" />
+                <span className="text-sm-label">Elevation</span>
               </div>
-              <p className="text-lg-value text-foreground tabular-nums">{elevation}m</p>
+              <p className="text-xl-heading text-foreground tabular-nums">{elevation}m</p>
             </div>
           )}
           {race?.estimated_finish_time && (
-            <div className="py-3">
-              <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                <Timer className="w-4 h-4 text-primary/70" />
-                <span className="text-xs-label">Est. Finish</span>
+            <div className="py-4">
+              <div className="flex items-center gap-2.5 text-muted-foreground mb-1.5">
+                <Timer className="w-5 h-5 text-primary/70" />
+                <span className="text-sm-label">Est. Finish</span>
               </div>
-              <p className="text-lg-value text-foreground tabular-nums">{finishTime}</p>
+              <p className="text-xl-heading text-foreground tabular-nums">{finishTime}</p>
             </div>
           )}
         </div>
@@ -107,14 +107,14 @@ export function RaceStats({ race, compact = false }: RaceStatsProps) {
 
       {/* Stage Length - Hidden on mobile (shown inline above), full on tablet+ */}
       {race?.stage_length_km && (
-        <div className="hidden md:flex items-center px-6 py-3 min-w-[120px]">
-          <div className="flex items-center gap-2">
-            <MapPin className="w-4 h-4 text-primary/70" />
+        <div className="hidden md:flex items-center px-8 py-4 min-w-[160px]">
+          <div className="flex items-center gap-3">
+            <MapPin className="w-5 h-5 text-primary/70" />
             <div>
-              <div className="text-xs-label text-muted-foreground mb-1">
+              <div className="text-sm-label text-muted-foreground mb-1.5">
                 Stage Length
               </div>
-              <p className="text-lg-value text-foreground tabular-nums">{stageLength} km</p>
+              <p className="text-xl-heading text-foreground tabular-nums">{stageLength} km</p>
             </div>
           </div>
         </div>
@@ -122,18 +122,18 @@ export function RaceStats({ race, compact = false }: RaceStatsProps) {
 
       {/* Mobile-only: Compact stats row */}
       {(race?.elevation_meters || race?.estimated_finish_time) && (
-        <div className="flex md:hidden items-center justify-between px-5 py-3 border-t border-border/20 bg-muted/20">
-          <div className="flex items-center gap-4">
+        <div className="flex md:hidden items-center justify-between px-5 py-4 border-t border-border/20 bg-muted/20">
+          <div className="flex items-center gap-6">
             {race?.elevation_meters && (
-              <div className="flex items-center gap-2">
-                <Mountain className="w-4 h-4 text-primary/70" />
-                <span className="text-sm font-semibold tabular-nums text-foreground">{elevation}m</span>
+              <div className="flex items-center gap-2.5">
+                <Mountain className="w-5 h-5 text-primary/70" />
+                <span className="text-base font-bold tabular-nums text-foreground">{elevation}m</span>
               </div>
             )}
             {race?.estimated_finish_time && (
-              <div className="flex items-center gap-2">
-                <Timer className="w-4 h-4 text-primary/70" />
-                <span className="text-sm font-semibold tabular-nums text-foreground">{finishTime}</span>
+              <div className="flex items-center gap-2.5">
+                <Timer className="w-5 h-5 text-primary/70" />
+                <span className="text-base font-bold tabular-nums text-foreground">{finishTime}</span>
               </div>
             )}
           </div>

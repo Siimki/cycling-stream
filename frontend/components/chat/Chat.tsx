@@ -91,7 +91,7 @@ export default function Chat() {
       {/* Header */}
       <div className="px-5 py-4 border-b border-border/50 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2.5">
-          <span className="text-base font-semibold text-foreground tracking-tight">Stream Chat</span>
+          <span className="text-lg font-semibold text-foreground tracking-tight">Stream Chat</span>
           <div className="flex items-center gap-2">
             {isConnected ? (
                 <span className="w-2 h-2 bg-connected rounded-full animate-pulse shadow-glow-green" title="Connected"></span>
@@ -112,29 +112,29 @@ export default function Chat() {
         {isLoading ? (
             <div className="flex items-center justify-center h-full text-muted-foreground text-base">Loading...</div>
         ) : (
-            <div className="space-y-4">
+            <div className="space-y-2">
             {messages.map((msg) => (
-                <div key={msg.id} className="leading-relaxed break-words transition-colors" style={{ lineHeight: '1.6' }}>
+                <div key={msg.id} className="leading-snug break-words transition-colors py-0.5" style={{ lineHeight: '1.4' }}>
                 {getUserBadge(msg.username)}
                 {msg.user_id ? (
                     <Link 
                       href={`/users/${msg.user_id}`}
-                      className="text-sm font-semibold cursor-pointer hover:underline mr-1.5 text-primary" 
+                      className="text-base font-bold cursor-pointer hover:underline mr-1.5 text-primary" 
                       style={{ color: getUserColor(msg.username) }}
                     >
                       {msg.username}
                     </Link>
                 ) : (
-                    <span className="text-sm font-semibold mr-1.5 text-primary" style={{ color: getUserColor(msg.username) }}>
+                    <span className="text-base font-bold mr-1.5 text-primary" style={{ color: getUserColor(msg.username) }}>
                       {msg.username}
                     </span>
                 )}
-                <span className="text-muted-foreground text-sm mr-1.5">:</span>
-                <span className="text-base text-foreground font-normal">{msg.message}</span>
+                <span className="text-muted-foreground text-base mr-1.5 font-medium">:</span>
+                <span className="text-[15px] text-foreground font-medium">{msg.message}</span>
                 </div>
             ))}
             {messages.length === 0 && (
-                <div className="text-center text-muted-foreground text-base mt-8">No messages yet. Say hello! 👋</div>
+                <div className="text-center text-muted-foreground text-lg mt-8">No messages yet. Say hello! 👋</div>
             )}
             </div>
         )}
@@ -181,23 +181,29 @@ export default function Chat() {
                       {inputValue.length} / {CHAT_MESSAGE_MAX_LENGTH}
                   </p>
                 </div>
-                {bonusReady && (
-                  <div className="mt-3 rounded-lg border border-border/50 bg-muted/30 p-3">
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <p className="text-sm font-semibold text-foreground">Watch bonus</p>
-                        <p className="text-xs text-muted-foreground/80">Ready to collect</p>
-                      </div>
-                      <Button
-                        size="sm"
-                        className="h-9 px-4 text-xs font-semibold bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-black shadow-lg shadow-amber-500/25 border-0"
-                        onClick={claimBonus}
-                      >
-                        Claim +50
-                      </Button>
+                {/* Bonus section - Always visible (enabled or disabled state) */}
+                <div className="mt-3 rounded-lg border border-border/50 bg-muted/30 p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">Watch bonus</p>
+                      <p className="text-xs text-muted-foreground/80">
+                        {bonusReady ? "Ready to collect" : "Keep watching to unlock"}
+                      </p>
                     </div>
+                    <Button
+                      size="sm"
+                      className={`h-9 px-4 text-xs font-semibold border-0 transition-all duration-300 ${
+                        bonusReady 
+                          ? "bg-success hover:bg-success/90 text-success-foreground shadow-lg shadow-success/20" 
+                          : "bg-muted text-muted-foreground cursor-not-allowed opacity-70"
+                      }`}
+                      onClick={claimBonus}
+                      disabled={!bonusReady}
+                    >
+                      {bonusReady ? "Claim +50" : "Locked"}
+                    </Button>
                   </div>
-                )}
+                </div>
             </>
         )}
       </div>
