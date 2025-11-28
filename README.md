@@ -31,7 +31,12 @@ cycling-stream-platform/
 │   └── migrations/      # SQL files for database schema changes
 ├── frontend/            # Next.js application
 │   ├── app/             # Pages and routing
-│   └── components/      # UI components
+│   │   ├── page.tsx     # Homepage (dashboard for authenticated users)
+│   │   ├── races/       # Race listing and detail pages
+│   │   └── ...          # Other pages (auth, profile, etc.)
+│   ├── components/      # UI components
+│   │   ├── homepage/    # Homepage dashboard components
+│   │   └── ...          # Other component groups
 ├── stream/              # Streaming server config (Docker/Owncast)
 ├── docker-compose.yml   # Local development DB and services
 ├── Makefile             # Shortcuts (for running app, migrations, etc.)
@@ -62,6 +67,8 @@ The Go backend follows a few helper-based patterns to keep handlers small and co
 
 - **Live Race Streaming**: Watch live cycling races with HLS streaming support
 - **User Accounts & Authentication**: Secure user registration and login
+- **Dashboard Homepage**: Personalized dashboard showing stats, continue watching, live races, and gamification
+- **Race Browsing**: Dedicated `/races` page for browsing all available races
 - **Pay-Per-View Tickets**: Stripe integration for race access
 - **Personalization**: 
   - Onboarding wizard to customize your experience
@@ -70,6 +77,7 @@ The Go backend follows a few helper-based patterns to keep handlers small and co
   - Watch history tracking
 - **Real-time Chat**: WebSocket-based chat during live races
 - **Watch Time Tracking**: Track viewing statistics per user per race
+- **Gamification**: XP system, missions, streaks, and achievements
 - **Admin Dashboard**: Manage races, streams, and view analytics
 
 ## 🚀 Quickstart: Run the app locally
@@ -165,9 +173,11 @@ Simple .env convention (backend/.env, frontend/.env.local).
 
 Basic CI:
 
-Run go test ./...
+Run backend tests: `make test-backend` (requires Docker DB running: `make docker-up`)
 
-Run npm test or npm run lint for frontend.
+Run frontend tests: `make test-frontend` or `npm test` in frontend/
+
+Run frontend lint: `make lint-frontend` or `npm run lint` in frontend/
 
 ✅ Done when:
 make docker-up, make run-backend, make run-frontend → app opens at localhost:3000 and backend /health returns OK.
@@ -211,9 +221,11 @@ Layout, basic design system (Tailwind, global styles).
 
 Pages:
 
-Home: list of upcoming races (from backend).
+Home: Dashboard-style homepage with personalized stats, continue watching, live races, and gamification features. Shows different content for authenticated vs non-authenticated users.
 
-Race detail: info page per race.
+Races: /races - Complete listing of all available races.
+
+Race detail: info page per race at /races/[id].
 
 Watch page: /races/[id]/watch with placeholder video player.
 
