@@ -1,8 +1,8 @@
 'use client';
 
-import { UserMissionWithDetails, getUserMissions } from '@/lib/api';
+import { UserMissionWithDetails, getUserMissions, MissionType } from '@/lib/api';
 import { MissionCard } from './MissionCard';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import ErrorMessage from '@/components/ErrorMessage';
 import Link from 'next/link';
@@ -40,6 +40,34 @@ export function MissionsPanel({ limit, showViewAll = true }: MissionsPanelProps)
     loadMissions();
   }, []);
 
+  // Group missions by type
+  const groupedMissions = useMemo(() => {
+    const groups: Record<string, { title: string; missions: UserMissionWithDetails[] }> = {
+      weekly: { title: 'Weekly Missions', missions: [] },
+      chat: { title: 'Chat Missions', missions: [] },
+      prediction: { title: 'Prediction Missions', missions: [] },
+      special: { title: 'Special / Limited-time', missions: [] },
+    };
+
+    missions.forEach((mission) => {
+      if (mission.mission_type === 'watch_time') {
+        groups.weekly.missions.push(mission);
+      } else if (mission.mission_type === 'chat_message') {
+        groups.chat.missions.push(mission);
+      } else if (mission.mission_type === 'predict_winner') {
+        groups.prediction.missions.push(mission);
+      } else {
+        // watch_race, follow_series, streak
+        groups.special.missions.push(mission);
+      }
+    });
+
+    // Filter out empty groups
+    return Object.entries(groups)
+      .filter(([_, group]) => group.missions.length > 0)
+      .map(([_, group]) => group);
+  }, [missions]);
+
   const displayMissions = limit && missions ? missions.slice(0, limit) : (missions || []);
   const hasMore = limit && missions && missions.length > limit;
 
@@ -64,27 +92,52 @@ export function MissionsPanel({ limit, showViewAll = true }: MissionsPanelProps)
     );
   }
 
-  return (
-    <div>
-      <div className="space-y-4">
-        {displayMissions.map((userMission) => (
-          <MissionCard
-            key={userMission.mission_id}
-            userMission={userMission}
-            onClaimed={() => loadMissions(true)}
-          />
-        ))}
-      </div>
-      {hasMore && showViewAll && (
-        <div className="mt-4 text-center">
-          <Link
-            href="/missions"
-            className="text-primary hover:underline text-sm font-medium"
-          >
-            View all missions →
-          </Link>
+  // If limit is set, show ungrouped list (for previews)
+  if (limit) {
+    return (
+      <div>
+        <div className="space-y-4">
+          {displayMissions.map((userMission) => (
+            <MissionCard
+              key={userMission.mission_id}
+              userMission={userMission}
+              onClaimed={() => loadMissions(true)}
+            />
+          ))}
         </div>
-      )}
+        {hasMore && showViewAll && (
+          <div className="mt-4 text-center">
+            <Link
+              href="/missions"
+              className="text-primary hover:underline text-sm font-medium"
+            >
+              View all missions →
+            </Link>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Full page: show grouped missions
+  return (
+    <div className="space-y-10">
+      {groupedMissions.map((group) => (
+        <div key={group.title} className="space-y-4">
+          <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-4">
+            {group.title}
+          </h2>
+          <div className="space-y-4">
+            {group.missions.map((userMission) => (
+              <MissionCard
+                key={userMission.mission_id}
+                userMission={userMission}
+                onClaimed={() => loadMissions(true)}
+              />
+            ))}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

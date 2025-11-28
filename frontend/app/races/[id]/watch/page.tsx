@@ -70,39 +70,47 @@ export default async function WatchPage({ params }: WatchPageProps) {
     <div className="min-h-screen bg-background flex flex-col">
         <StreamHeader />
 
-        <main className="flex-1 flex flex-col lg:flex-row">
+        <main className="flex-1">
           <WatchTrackingProvider raceId={id}>
             <HudStatsProvider>
-            {/* Main content area - Flex Col for Video + Stats + Points */}
-            <div className="flex-1 flex flex-col bg-background relative min-w-0">
-              
-              {/* Video Player Section - Proper height on all devices */}
-              <div className="w-full bg-black flex items-center justify-center relative">
-                <div className="w-full aspect-video max-w-full">
-                  <AuthRequiredWrapper requiresLogin={requiresLogin} raceId={id}>
-                    <StreamProvider
-                      raceId={id}
-                      requiresLogin={requiresLogin}
-                      initialStream={stream}
-                    />
-                  </AuthRequiredWrapper>
+              {/* Consistent spacing between nav and content (32px) */}
+              <div className="pt-8">
+                {/* 12-column responsive grid layout with gutters - same padding as nav */}
+                <div className="grid grid-cols-12 gap-4 lg:gap-6 px-6 lg:px-8">
+                {/* Main content area - 12 columns on mobile, 8 on desktop, 9 on large screens */}
+                <div className="col-span-12 lg:col-span-8 xl:col-span-9 flex flex-col bg-background relative min-w-0">
+                  
+                  {/* Video Player Section - Proper height on all devices with max-width constraint */}
+                  <div className="w-full bg-background flex items-center justify-center relative py-4 lg:py-6">
+                    <div className="w-full aspect-video max-w-full">
+                      <AuthRequiredWrapper requiresLogin={requiresLogin} raceId={id}>
+                        <StreamProvider
+                          raceId={id}
+                          requiresLogin={requiresLogin}
+                          initialStream={stream}
+                        />
+                      </AuthRequiredWrapper>
+                    </div>
+                  </div>
+
+                  {/* Race Stats Section - Collapsible */}
+                  <div className="shrink-0">
+                     <RaceStats race={race} />
+                  </div>
+
+                  {/* Points Display Section - Collapsible */}
+                  <div className="shrink-0">
+                     <PointsDisplay />
+                  </div>
+
+                </div>
+
+                {/* Chat sidebar - 12 columns on mobile, 4 on desktop, 3 on large screens */}
+                <div className="col-span-12 lg:col-span-4 xl:col-span-3">
+                  <ChatWrapper raceId={id} requiresLogin={requiresLogin} isLive={isLive} />
+                </div>
                 </div>
               </div>
-
-              {/* Race Stats Section - Collapsible */}
-              <div className="shrink-0">
-                 <RaceStats race={race} />
-              </div>
-
-              {/* Points Display Section - Collapsible */}
-              <div className="shrink-0">
-                 <PointsDisplay />
-              </div>
-
-            </div>
-
-            {/* Chat sidebar - Fixed height, scrollable */}
-            <ChatWrapper raceId={id} requiresLogin={requiresLogin} isLive={isLive} />
             </HudStatsProvider>
           </WatchTrackingProvider>
         </main>

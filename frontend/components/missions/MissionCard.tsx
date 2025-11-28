@@ -66,28 +66,37 @@ export function MissionCard({ userMission, onClaimed }: MissionCardProps) {
 
   return (
     <div className="bg-card/80 backdrop-blur-sm border border-border/50 rounded-lg p-4 sm:p-6">
-      <div className="flex items-start justify-between mb-3">
-        <div className="flex-1">
-          <h3 className="text-base sm:text-lg font-semibold text-foreground/95 mb-1">
-            {title}
+      <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-3 sm:gap-4">
+        {/* Left: Title + Description */}
+        <div className="flex-1 min-w-0">
+          <h3 className="text-base sm:text-lg font-medium text-foreground/95 mb-2 truncate">
+            {title.replace(/\s*\(Tier \d+\)/gi, '')}
           </h3>
           {description && (
-            <p className="text-sm text-muted-foreground">{description}</p>
+            <p className="text-sm text-muted-foreground truncate">{description}</p>
           )}
         </div>
-        <div className="ml-4 text-right">
-          <div className="text-lg sm:text-xl font-bold text-primary">
-            +{points_reward}
+
+        {/* Right: Reward */}
+        <div className="text-right sm:flex sm:items-start sm:justify-end">
+          <div className="min-w-[80px]">
+            <div className="text-lg sm:text-xl font-bold text-primary">
+              +{points_reward}
+            </div>
+            <div className="text-xs text-muted-foreground">points</div>
           </div>
-          <div className="text-xs text-muted-foreground">points</div>
         </div>
       </div>
 
-      <MissionProgress progress={progress} target={target_value} className="mb-3" />
+      {/* Middle: Progress Bar */}
+      <div className="mt-4">
+        <MissionProgress progress={progress} target={target_value} />
+      </div>
 
-      <div className="flex items-center justify-between">
+      {/* Status/Claim Button */}
+      <div className="flex items-center justify-between mt-4">
         {isClaimed ? (
-          <span className="text-sm text-muted-foreground">Reward claimed</span>
+          <span className="text-xs text-muted-foreground font-medium">Reward claimed</span>
         ) : canClaim ? (
           <Button
             type="button"
@@ -101,7 +110,7 @@ export function MissionCard({ userMission, onClaimed }: MissionCardProps) {
         ) : isCompleted ? (
           <span className="text-sm text-primary font-medium">Completed!</span>
         ) : (
-          <span className="text-sm text-muted-foreground">In progress</span>
+          <span className="text-sm text-muted-foreground font-medium">In progress</span>
         )}
       </div>
     </div>

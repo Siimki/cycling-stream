@@ -9,12 +9,19 @@ type XPConfig struct {
 }
 
 // LevelingConfig defines how levels are calculated from XP
+// Uses progressive scaling where each level requires more XP than the previous
 type LevelingConfig struct {
 	// BaseXP is the XP needed to reach level 2 (default: 100)
 	// Level 1: 0 to (BaseXP - 1) XP
 	BaseXP int
-	// IncrementPerLevel is the additional XP needed per level beyond level 2 (default: 20)
-	// Level N (N > 1) requires: BaseXP + (N-2) * IncrementPerLevel XP
+	// IncrementPerLevel is the base increment used in progressive scaling (default: 20)
+	// Level N (N > 1) requires: BaseXP + IncrementPerLevel * (N-2)(N-1)/2 XP
+	// This uses triangular numbers for progressive scaling:
+	//   Level 2: BaseXP (e.g., 100)
+	//   Level 3: BaseXP + IncrementPerLevel * 1 (e.g., 120)
+	//   Level 4: BaseXP + IncrementPerLevel * 3 (e.g., 160)
+	//   Level 5: BaseXP + IncrementPerLevel * 6 (e.g., 220)
+	//   Each level requires progressively more XP than the previous
 	IncrementPerLevel int
 }
 

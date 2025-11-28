@@ -51,7 +51,7 @@ func (h *XPHandler) GetUserXPProgress(c *fiber.Ctx) error {
 		"xp_total":                 user.XPTotal,
 		"level":                    user.Level,
 		"xp_for_current_level_start": xpForCurrentLevelStart,
-		"xp_for_next_level":        xpForNextLevelStart,
+		"xp_for_next_level":        xpForNextLevelStart - xpForCurrentLevelStart,
 		"xp_to_next_level":         xpNeededForNext,
 		"progress_in_current_level": currentXPInLevel,
 	})

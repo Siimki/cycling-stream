@@ -106,7 +106,7 @@ export default function VideoPlayer({ streamUrl, status, streamType, sourceId, r
   // YouTube Player
   if (status === 'live' && streamType === 'youtube' && sourceId) {
     return (
-      <div className="aspect-video w-full h-full bg-black rounded-lg overflow-hidden border border-border">
+      <div className="aspect-video w-full h-full bg-black rounded-lg overflow-hidden border border-border/50 shadow-lg shadow-black/20">
          <iframe
             width="100%"
             height="100%"
@@ -125,7 +125,7 @@ export default function VideoPlayer({ streamUrl, status, streamType, sourceId, r
     // Note: Authentication checks are handled by AuthRequiredWrapper
     // This component only shows the stream or offline message
     return (
-      <div className="bg-card aspect-video flex items-center justify-center rounded-lg relative overflow-hidden border border-border">
+      <div className="bg-card aspect-video flex items-center justify-center rounded-lg relative overflow-hidden border border-border/50 shadow-lg shadow-black/20">
         <div className="absolute inset-0 bg-gradient-to-br from-background to-card"></div>
         <div className="relative text-center text-foreground z-10 px-4">
           <div className="text-6xl mb-4">📺</div>
@@ -140,7 +140,7 @@ export default function VideoPlayer({ streamUrl, status, streamType, sourceId, r
 
   if (error) {
     return (
-      <div className="bg-card aspect-video flex items-center justify-center rounded-lg relative overflow-hidden border border-border">
+      <div className="bg-card aspect-video flex items-center justify-center rounded-lg relative overflow-hidden border border-border/50 shadow-lg shadow-black/20">
         <div className="absolute inset-0 bg-gradient-to-br from-destructive/20 to-card"></div>
         <div className="relative text-center text-foreground z-10 px-4">
           <div className="text-6xl mb-4">⚠️</div>
@@ -154,7 +154,7 @@ export default function VideoPlayer({ streamUrl, status, streamType, sourceId, r
   return (
     <div
       ref={containerRef}
-      className="relative aspect-video bg-black group rounded-lg overflow-hidden border border-border"
+      className="relative aspect-video bg-black group rounded-lg overflow-hidden border border-border/50 shadow-lg shadow-black/20"
     >
       {/* Video element */}
       <video ref={videoRef} className="w-full h-full object-cover" playsInline />

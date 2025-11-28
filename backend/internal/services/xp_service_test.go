@@ -65,28 +65,28 @@ func TestXPService_GetLevelProgress(t *testing.T) {
 			xp:                120,
 			level:             3,
 			expectedCurrentXP: 0, // Just reached level 3
-			expectedNeededXP:  20, // Need 20 more to reach 140 (level 4)
+			expectedNeededXP:  40, // Need 40 more to reach 160 (level 4)
 		},
 		{
 			name:              "Level 3, 130 XP",
 			xp:                130,
 			level:             3,
 			expectedCurrentXP: 10, // 10 XP into level 3
-			expectedNeededXP:  10, // Need 10 more to reach 140 (level 4)
+			expectedNeededXP:  30, // Need 30 more to reach 160 (level 4)
 		},
 		{
-			name:              "Level 10, 260 XP",
-			xp:                260,
+			name:              "Level 10, 820 XP",
+			xp:                820,
 			level:             10,
 			expectedCurrentXP: 0, // Just reached level 10
-			expectedNeededXP:  20, // Need 20 more to reach 280 (level 11)
+			expectedNeededXP:  180, // Need 180 more to reach 1000 (level 11)
 		},
 		{
-			name:              "Level 10, 270 XP",
-			xp:                270,
+			name:              "Level 10, 870 XP",
+			xp:                870,
 			level:             10,
-			expectedCurrentXP: 10, // 10 XP into level 10
-			expectedNeededXP:  10, // Need 10 more to reach 280 (level 11)
+			expectedCurrentXP: 50, // 50 XP into level 10
+			expectedNeededXP:  130, // Need 130 more to reach 1000 (level 11)
 		},
 		{
 			name:              "Level 1, 0 XP",
@@ -144,10 +144,10 @@ func TestXPService_CalculateLevel(t *testing.T) {
 		{"100 XP", 100, 2},
 		{"119 XP", 119, 2},
 		{"120 XP", 120, 3},
-		{"139 XP", 139, 3},
-		{"140 XP", 140, 4},
-		{"260 XP", 260, 10},
-		{"280 XP", 280, 11},
+		{"159 XP", 159, 3},
+		{"160 XP", 160, 4},
+		{"820 XP", 820, 10},
+		{"1000 XP", 1000, 11},
 	}
 
 	for _, tt := range tests {
@@ -177,9 +177,9 @@ func TestXPService_GetXPForLevel(t *testing.T) {
 		{"Level 1", 1, 0},
 		{"Level 2", 2, 100},
 		{"Level 3", 3, 120},
-		{"Level 4", 4, 140},
-		{"Level 10", 10, 260},
-		{"Level 11", 11, 280},
+		{"Level 4", 4, 160},
+		{"Level 10", 10, 820},
+		{"Level 11", 11, 1000},
 	}
 
 	for _, tt := range tests {
@@ -208,8 +208,8 @@ func TestXPService_GetXPForNextLevel(t *testing.T) {
 	}{
 		{"From Level 1", 1, 100},
 		{"From Level 2", 2, 120},
-		{"From Level 3", 3, 140},
-		{"From Level 10", 10, 280},
+		{"From Level 3", 3, 160},
+		{"From Level 10", 10, 1000},
 	}
 
 	for _, tt := range tests {

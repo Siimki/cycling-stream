@@ -296,29 +296,54 @@ func (r *UserRepository) UpdateLevel(userID string, level int) error {
 
 // GetLevelFromXP calculates the level from total XP using the provided config.
 // Level 1: 0 to (BaseXP - 1) XP
-// Level N (N > 1): Requires BaseXP + (N-2) * IncrementPerLevel XP
+// Level N (N > 1): Requires BaseXP + IncrementPerLevel * sum(1 to N-2)
+// Progressive formula: BaseXP + IncrementPerLevel * (N-2)(N-1)/2
 func GetLevelFromXP(xp int, cfg *config.LevelingConfig) int {
 	if xp < cfg.BaseXP {
 		return 1
 	}
-	// Solve: xp >= BaseXP + (level - 2) * IncrementPerLevel
-	// xp - BaseXP >= (level - 2) * IncrementPerLevel
-	// (xp - BaseXP) / IncrementPerLevel >= level - 2
-	// level <= (xp - BaseXP) / IncrementPerLevel + 2
-	// But we need to handle integer division correctly
-	level := 1 + ((xp - cfg.BaseXP + cfg.IncrementPerLevel) / cfg.IncrementPerLevel)
-	return level
+	// Solve: xp >= BaseXP + IncrementPerLevel * (level-2)(level-1)/2
+	// This is a quadratic equation. Use binary search to find the correct level
+	if cfg.IncrementPerLevel <= 0 {
+		return 1
+	}
+	
+	// Binary search for the correct level
+	low := 2
+	high := 1000 // Reasonable max level
+	for low <= high {
+		mid := (low + high) / 2
+		xpForMid := GetXPForLevel(mid, cfg)
+		if xpForMid <= xp {
+			low = mid + 1
+		} else {
+			high = mid - 1
+		}
+	}
+	return high
 }
 
 // GetXPForLevel returns the XP needed to REACH level N (the minimum XP for that level).
 // Level 1: returns 0
-// Level N (N > 1): returns BaseXP + (N-2) * IncrementPerLevel
+// Level N (N > 1): returns BaseXP + IncrementPerLevel * sum(1 to N-2)
+// Progressive formula using triangular numbers: BaseXP + IncrementPerLevel * (N-2)(N-1)/2
+// This means each level requires progressively more XP:
+//   Level 2: BaseXP (e.g., 100)
+//   Level 3: BaseXP + IncrementPerLevel (e.g., 120)
+//   Level 4: BaseXP + IncrementPerLevel * 3 (e.g., 160)
+//   Level 5: BaseXP + IncrementPerLevel * 6 (e.g., 220)
 func GetXPForLevel(level int, cfg *config.LevelingConfig) int {
 	if level <= 1 {
 		return 0
 	}
-	// XP needed to reach level N = BaseXP + (N-2) * IncrementPerLevel
-	return cfg.BaseXP + (level-2)*cfg.IncrementPerLevel
+	if level == 2 {
+		return cfg.BaseXP
+	}
+	// XP needed to reach level N = BaseXP + IncrementPerLevel * (N-2)(N-1)/2
+	// This uses triangular numbers: sum(1 to n) = n(n+1)/2
+	// For level N, we need sum(1 to N-2) = (N-2)(N-1)/2
+	n := level - 2
+	return cfg.BaseXP + (cfg.IncrementPerLevel * n * (n + 1)) / 2
 }
 
 // GetXPForNextLevel returns the XP needed to reach the NEXT level (level N+1) from the current level N.

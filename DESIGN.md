@@ -634,6 +634,208 @@ For important actions (sign up, watch race, etc.):
 
 **Note**: Current `SkeletonLoader.tsx` uses hardcoded colors - should be updated to use design tokens.
 
+### Mission Card
+
+#### Standard Mission Card
+
+```tsx
+<div className="bg-card/80 backdrop-blur-sm border border-border/50 rounded-lg p-4 sm:p-6">
+  <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-3 sm:gap-4">
+    {/* Left: Title + Description */}
+    <div className="flex-1 min-w-0">
+      <h3 className="text-base sm:text-lg font-semibold text-foreground/95 mb-1 truncate">
+        Mission Title
+      </h3>
+      {description && (
+        <p className="text-sm text-muted-foreground truncate">{description}</p>
+      )}
+    </div>
+
+    {/* Right: Reward */}
+    <div className="text-right sm:flex sm:items-start sm:justify-end">
+      <div>
+        <div className="text-lg sm:text-xl font-bold text-primary">
+          +{points_reward}
+        </div>
+        <div className="text-xs text-muted-foreground">points</div>
+      </div>
+    </div>
+  </div>
+
+  {/* Middle: Progress Bar */}
+  <div className="mt-3">
+    <MissionProgress progress={progress} target={target_value} />
+  </div>
+
+  {/* Status/Claim Button */}
+  <div className="flex items-center justify-between mt-3">
+    {/* Status or claim button */}
+  </div>
+</div>
+```
+
+**Design Rules**:
+- **Layout**: Grid-based with left (title+description), middle (progress), right (reward)
+- **Padding**: `p-4 sm:p-6` (consistent across all cards)
+- **Border**: `border border-border/50` with `rounded-lg`
+- **Title**: `text-base sm:text-lg font-semibold text-foreground/95` with `truncate`
+- **Description**: `text-sm text-muted-foreground` with `truncate` (one line only)
+- **Reward**: Right-aligned, `text-lg sm:text-xl font-bold text-primary`
+- **Status Labels**: `text-sm text-muted-foreground` or `text-sm text-primary font-medium` (for completed)
+- **Spacing**: `gap-3 sm:gap-4` between grid items, `mt-3` between sections
+
+### Mission Progress Bar
+
+#### Standard Progress Bar
+
+```tsx
+<div className="w-full">
+  <div className="flex items-center justify-between mb-1">
+    <span className="text-xs text-muted-foreground">
+      {progress} / {target}
+    </span>
+    <span className="text-xs text-muted-foreground">{Math.round(percentage)}%</span>
+  </div>
+  <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
+    <div
+      className="h-full bg-primary"
+      style={{ width: `${percentage}%` }}
+    />
+  </div>
+</div>
+```
+
+**Design Rules**:
+- **Height**: `h-2` (8px) - consistent across all progress bars
+- **Border Radius**: `rounded-full`
+- **Fill Color**: `bg-primary` (brand-green)
+- **Background**: `bg-muted` (neutral dark)
+- **Percentage Text**: Right-aligned, `text-xs text-muted-foreground`
+- **Progress Text**: Left-aligned, `text-xs text-muted-foreground`
+- **No transitions or animations** for this release (static UI only)
+
+### Weekly Overview Card
+
+#### Combined Weekly Overview
+
+```tsx
+<div className="bg-card/80 backdrop-blur-sm border border-border/50 rounded-lg p-4 sm:p-6">
+  {/* Level & XP Progress - Main progress bar */}
+  <div className="mb-4">
+    <div className="flex items-center justify-between mb-2">
+      <h3 className="text-lg font-semibold text-foreground/95">
+        Level {level}
+      </h3>
+      <div className="text-sm text-muted-foreground">
+        {xp_total} XP
+      </div>
+    </div>
+    <div className="space-y-1">
+      <div className="flex justify-between text-sm text-muted-foreground">
+        <span>Progress to Level {level + 1}</span>
+        <span>{progress} / {target} XP</span>
+      </div>
+      <div className="h-3 bg-muted rounded-full overflow-hidden">
+        <div
+          className="h-full bg-primary transition-all duration-300"
+          style={{ width: `${percentage}%` }}
+        />
+      </div>
+    </div>
+  </div>
+
+  {/* Weekly Goals - Simple 2-row blocks */}
+  <div className="space-y-3 pt-3 border-t border-border/50">
+    <div>
+      <div className="flex justify-between text-sm mb-1">
+        <span className="text-muted-foreground">Watch Time</span>
+        <span className="font-medium text-foreground">{minutes} / 30 min</span>
+      </div>
+    </div>
+    <div>
+      <div className="flex justify-between text-sm mb-1">
+        <span className="text-muted-foreground">Chat Messages</span>
+        <span className="font-medium text-foreground">{messages} / 3</span>
+      </div>
+    </div>
+  </div>
+</div>
+```
+
+**Design Rules**:
+- **Single cohesive card** (not multiple cards)
+- **Main progress bar**: XP progress with `h-3` height, `bg-primary` fill
+- **Weekly goals**: Simple 2-row blocks (no progress bars, just numbers)
+- **Numbers**: Clearly visible with `font-medium text-foreground`
+- **Labels**: Muted with `text-muted-foreground`
+- **Spacing**: `mb-4` for main section, `pt-3` with `border-t border-border/50` for weekly goals
+- **Typography**: Follow design system scale
+
+### Mission Grouping
+
+#### Grouped Missions Display
+
+```tsx
+<div className="space-y-6">
+  {groupedMissions.map((group) => (
+    <div key={group.title} className="space-y-4">
+      <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+        {group.title}
+      </h2>
+      <div className="space-y-4">
+        {group.missions.map((mission) => (
+          <MissionCard key={mission.id} userMission={mission} />
+        ))}
+      </div>
+    </div>
+  ))}
+</div>
+```
+
+**Grouping Rules**:
+- **Weekly Missions**: `watch_time` mission types
+- **Chat Missions**: `chat_message` mission types
+- **Prediction Missions**: `predict_winner` mission types
+- **Special / Limited-time**: `watch_race`, `follow_series`, `streak` mission types
+- **Section Headers**: `text-sm font-medium text-muted-foreground uppercase tracking-wider`
+- **Spacing**: `space-y-6` between groups, `space-y-4` between cards within a group
+- **Do NOT intermix** mission types - each group contains only its designated types
+
+### Streak Display
+
+#### Streak Card
+
+```tsx
+<div className="bg-card/80 backdrop-blur-sm border border-border/50 rounded-lg p-4">
+  <h3 className="text-lg font-semibold text-foreground/95 mb-2">Streak</h3>
+  <div className="flex items-center gap-4">
+    <div>
+      <div className="flex items-center gap-2">
+        <Link className={`w-5 h-5 ${active ? 'text-primary' : 'text-muted-foreground'}`} />
+        <span className={`text-2xl font-bold ${active ? 'text-primary' : 'text-foreground'}`}>
+          {current_streak}
+        </span>
+      </div>
+      <div className="text-sm text-muted-foreground">Current Streak</div>
+    </div>
+    <div>
+      <div className="text-2xl font-bold text-foreground">
+        {best_streak}
+      </div>
+      <div className="text-sm text-muted-foreground">Best Streak</div>
+    </div>
+  </div>
+</div>
+```
+
+**Design Rules**:
+- **Icon**: Use `Link` icon from lucide-react (no emojis)
+- **Icon Size**: `w-5 h-5` (consistent with design system)
+- **Active Color**: `text-primary` (brand-green only when streak > 0)
+- **Inactive Color**: `text-muted-foreground` or `text-foreground`
+- **Compact Layout**: Minimal spacing, clear hierarchy
+- **No emojis**: Ever. Use icons from lucide-react only.
+
 ---
 
 ## Effects & Animations

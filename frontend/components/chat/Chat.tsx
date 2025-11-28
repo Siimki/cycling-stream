@@ -87,9 +87,9 @@ export default function Chat() {
   }
 
   return (
-    <div className="flex flex-col h-full bg-card/50 border-l border-border min-h-0">
+    <div className="flex flex-col h-full" style={{ backgroundColor: 'var(--design-surface)' }}>
       {/* Header */}
-      <div className="px-4 py-3 border-b border-border/50 flex items-center justify-between shrink-0 h-12">
+      <div className="px-5 py-4 border-b border-border/50 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2.5">
           <span className="text-base font-semibold text-foreground tracking-tight">Stream Chat</span>
           <div className="flex items-center gap-2">
@@ -108,29 +108,29 @@ export default function Chat() {
       </div>
 
       {/* Messages - Fixed height with scroll */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto chat-scroll px-4 py-3 min-h-0">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto chat-scroll px-5 py-4 min-h-0">
         {isLoading ? (
             <div className="flex items-center justify-center h-full text-muted-foreground text-base">Loading...</div>
         ) : (
-            <div className="space-y-1.5">
+            <div className="space-y-4">
             {messages.map((msg) => (
-                <div key={msg.id} className="leading-relaxed py-1.5 hover:bg-muted/30 -mx-2 px-2 rounded break-words transition-colors">
+                <div key={msg.id} className="leading-relaxed break-words transition-colors" style={{ lineHeight: '1.6' }}>
                 {getUserBadge(msg.username)}
                 {msg.user_id ? (
                     <Link 
                       href={`/users/${msg.user_id}`}
-                      className="text-sm font-bold cursor-pointer hover:underline mr-1" 
+                      className="text-sm font-semibold cursor-pointer hover:underline mr-1.5 text-primary" 
                       style={{ color: getUserColor(msg.username) }}
                     >
                       {msg.username}
                     </Link>
                 ) : (
-                    <span className="text-sm font-bold mr-1" style={{ color: getUserColor(msg.username) }}>
+                    <span className="text-sm font-semibold mr-1.5 text-primary" style={{ color: getUserColor(msg.username) }}>
                       {msg.username}
                     </span>
                 )}
-                <span className="text-muted-foreground text-sm mr-1">:</span>
-                <span className="text-base text-foreground/90 font-medium">{msg.message}</span>
+                <span className="text-muted-foreground text-sm mr-1.5">:</span>
+                <span className="text-base text-foreground font-normal">{msg.message}</span>
                 </div>
             ))}
             {messages.length === 0 && (
@@ -142,7 +142,7 @@ export default function Chat() {
 
       {/* Error Message */}
       {error && (
-        <div className="px-4 py-2 bg-destructive/10 border-t border-destructive/20 text-sm font-medium text-destructive flex justify-between items-center shrink-0">
+        <div className="px-5 py-3 bg-destructive/10 border-t border-destructive/20 text-sm font-medium text-destructive flex justify-between items-center shrink-0">
            <span>{error}</span>
            {!isConnected && (
               <button onClick={reconnect} className="underline hover:text-destructive/80 font-bold">Reconnect</button>
@@ -151,7 +151,7 @@ export default function Chat() {
       )}
 
       {/* Input */}
-      <div className="p-3 border-t border-border/50 shrink-0 bg-card/30">
+      <div className="px-5 py-4 border-t border-border/50 shrink-0">
         {!isAuthenticated ? (
             <div className="text-center py-3 text-base text-muted-foreground">
                  <a href="/auth/login" className="text-primary hover:underline font-medium">Sign in</a> to chat
@@ -165,24 +165,24 @@ export default function Chat() {
                     onChange={(e) => setInputValue(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleSend()}
                     disabled={!isConnected}
-                    className="flex-1 h-10 bg-muted/50 border-border/50 text-base placeholder:text-muted-foreground/60 focus-visible:ring-1 focus-visible:ring-primary/50"
+                    className="flex-1 h-10 bg-background border border-border/50 rounded-lg text-base placeholder:text-muted-foreground/70 focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:border-primary/50"
                 />
                 <Button 
                     size="icon" 
-                    className="h-10 w-10 bg-primary text-primary-foreground hover:bg-primary/90 shrink-0" 
+                    className="h-10 w-10 bg-primary text-primary-foreground hover:bg-primary/90 shrink-0 rounded-lg" 
                     onClick={handleSend}
                     disabled={!isConnected || !inputValue.trim()}
                 >
                     <Send className="w-4 h-4" />
                 </Button>
                 </div>
-                <div className="flex justify-end mt-1.5 px-0.5">
+                <div className="flex justify-end mt-2 px-0.5">
                   <p className="text-xs text-muted-foreground/60 font-medium">
                       {inputValue.length} / {CHAT_MESSAGE_MAX_LENGTH}
                   </p>
                 </div>
                 {bonusReady && (
-                  <div className="mt-3 rounded-2xl border border-border/50 bg-muted/30 p-3">
+                  <div className="mt-3 rounded-lg border border-border/50 bg-muted/30 p-3">
                     <div className="flex items-center justify-between gap-3">
                       <div>
                         <p className="text-sm font-semibold text-foreground">Watch bonus</p>

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { getUserXP, getUserWeekly, type XPProgress, type WeeklyGoalProgress } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
+import { Link } from 'lucide-react';
 
 interface UserStatsProps {
   compact?: boolean; // For header display
@@ -111,9 +112,9 @@ export default function UserStats({ compact = false }: UserStatsProps) {
 
         {/* Streak */}
         {weeklyData && weeklyData.current_streak_weeks > 0 && (
-          <div className="flex items-center gap-1 px-2 py-1 bg-warning/20 rounded-md">
-            <span className="text-warning">🔥</span>
-            <span className="text-warning font-medium">
+          <div className="flex items-center gap-1 px-2 py-1 bg-primary/20 rounded-md">
+            <Link className="w-3 h-3 text-primary" />
+            <span className="text-primary font-medium">
               {weeklyData.current_streak_weeks}w
             </span>
           </div>
@@ -198,8 +199,11 @@ export default function UserStats({ compact = false }: UserStatsProps) {
           <h3 className="text-lg font-semibold text-foreground/95 mb-2">Streak</h3>
           <div className="flex items-center gap-4">
             <div>
-              <div className="text-2xl font-bold text-warning">
-                🔥 {weeklyData.current_streak_weeks}
+              <div className="flex items-center gap-2">
+                <Link className={`w-5 h-5 ${weeklyData.current_streak_weeks > 0 ? 'text-primary' : 'text-muted-foreground'}`} />
+                <span className={`text-2xl font-bold ${weeklyData.current_streak_weeks > 0 ? 'text-primary' : 'text-foreground'}`}>
+                  {weeklyData.current_streak_weeks}
+                </span>
               </div>
               <div className="text-sm text-muted-foreground">Current Streak</div>
             </div>

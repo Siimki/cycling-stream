@@ -20,7 +20,7 @@ export default async function Home() {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <Navigation variant="full" />
-      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 w-full">
+      <main className="flex-1 max-w-7xl mx-auto px-6 lg:px-8 pt-8 pb-6 sm:pb-8 w-full">
         {error ? (
           <ErrorMessage message={error} />
         ) : !races || races.length === 0 ? (
