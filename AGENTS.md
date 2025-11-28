@@ -9,6 +9,7 @@
 ## Build, Test, and Development Commands
 - Install deps: `make setup`.
 - Local stack: `make docker-up` (Postgres + pgAdmin), `make run-backend`, `make run-frontend` in a second terminal.
+- Defaults assume Postgres exposed on host `5434` (see `docker-compose.yml` / `.cursorrules`).
 - Migrations: `make migrate-up` (needs `migrate` CLI) or `make migrate-create NAME=...`.
 - Quality gates: `make test`, or per side `make test-backend` / `make test-frontend`; lint with `make lint-backend` / `make lint-frontend`; build via `make build-backend` / `make build-frontend`.
 
@@ -31,3 +32,9 @@
 - Never commit `.env*` or generated secrets; rotate `JWT_SECRET` and DB credentials per environment.
 - Keep local services bound to localhost; verify `PGADMIN_PORT`/`DB_PORT` conflicts before `make docker-up`.
 - Document port/CDN expectations when editing streaming config under `stream/`.
+
+## Reference Docs
+- API reference: `backend/API_DOCUMENTATION.md` (endpoints, auth, rate-limit expectations).
+- QA plan and known test debt: `docs/QA_PLAN.md` (notes on lint failures and DB role requirement for Go tests).
+- WebSocket troubleshooting: `WEBSOCKET_ERROR_DEBUG.md` (chat/live connection checks and close codes).
+- Runbook for agents/humans: `.cursorrules` (startup commands, port defaults). If you change ports or Make targets, update both `.cursorrules` and `README.md` in the same change.
