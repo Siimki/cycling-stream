@@ -7,6 +7,9 @@ import { Navigation } from '@/components/layout/Navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import Footer from '@/components/layout/Footer';
+import { ToggleSwitch } from '@/components/ui/toggle-switch';
+import { Slider } from '@/components/ui/slider';
+import { useExperience } from '@/contexts/ExperienceContext';
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -16,6 +19,7 @@ export default function SettingsPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
+  const { uiPreferences, audioPreferences, updateUIPreferences, updateAudioPreferences } = useExperience();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -126,6 +130,72 @@ export default function SettingsPage() {
                   {loading ? 'Changing password...' : 'Change Password'}
                 </Button>
               </form>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-8 grid gap-6">
+          <div className="bg-card/80 backdrop-blur-sm border border-border/50 rounded-lg p-6 sm:p-8 space-y-4">
+            <h2 className="text-lg font-semibold text-foreground/95">Motion & Animations</h2>
+            <ToggleSwitch
+              label="Chat animations"
+              description="Controls message entry and emote motion."
+              checked={uiPreferences?.chat_animations ?? true}
+              onCheckedChange={(value) => updateUIPreferences({ chat_animations: value })}
+            />
+            <ToggleSwitch
+              label="Button pulse"
+              description="Hover expansion for interactive elements."
+              checked={uiPreferences?.button_pulse ?? true}
+              onCheckedChange={(value) => updateUIPreferences({ button_pulse: value })}
+            />
+            <ToggleSwitch
+              label="Poll animations"
+              description="Slide/fade for poll announcements."
+              checked={uiPreferences?.poll_animations ?? true}
+              onCheckedChange={(value) => updateUIPreferences({ poll_animations: value })}
+            />
+            <ToggleSwitch
+              label="Reduced motion"
+              description="Minimize non-essential motion."
+              checked={uiPreferences?.reduced_motion ?? false}
+              onCheckedChange={(value) => updateUIPreferences({ reduced_motion: value })}
+            />
+          </div>
+
+          <div className="bg-card/80 backdrop-blur-sm border border-border/50 rounded-lg p-6 sm:p-8 space-y-4">
+            <h2 className="text-lg font-semibold text-foreground/95">Sound Feedback</h2>
+            <ToggleSwitch
+              label="Button clicks"
+              description="Play a soft click on press."
+              checked={audioPreferences?.button_clicks ?? true}
+              onCheckedChange={(value) => updateAudioPreferences({ button_clicks: value })}
+            />
+            <ToggleSwitch
+              label="Notification sounds"
+              description="Polls, events, and rewards."
+              checked={audioPreferences?.notification_sounds ?? true}
+              onCheckedChange={(value) => updateAudioPreferences({ notification_sounds: value })}
+            />
+            <ToggleSwitch
+              label="Mention ping"
+              description="Quiet alert when someone tags you."
+              checked={audioPreferences?.mention_pings ?? true}
+              onCheckedChange={(value) => updateAudioPreferences({ mention_pings: value })}
+            />
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <span className="font-medium">Master volume</span>
+                <span className="text-muted-foreground">
+                  {Math.round((audioPreferences?.master_volume ?? 0.15) * 100)}%
+                </span>
+              </div>
+              <Slider
+                value={[Math.round((audioPreferences?.master_volume ?? 0.15) * 100)]}
+                onValueChange={([value]) => updateAudioPreferences({ master_volume: value / 100 })}
+                max={100}
+                step={5}
+              />
             </div>
           </div>
         </div>

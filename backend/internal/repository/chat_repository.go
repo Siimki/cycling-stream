@@ -2,6 +2,7 @@ package repository
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 
 	"github.com/cyclingstream/backend/internal/models"
@@ -19,8 +20,8 @@ func NewChatRepository(db *sql.DB) *ChatRepository {
 func (r *ChatRepository) Create(message *models.ChatMessage) error {
 	message.ID = uuid.New().String()
 	query := `
-		INSERT INTO chat_messages (id, race_id, user_id, username, message)
-		VALUES ($1, $2, $3, $4, $5)
+		INSERT INTO chat_messages (id, race_id, user_id, username, message, user_role, badges, special_emote)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 		RETURNING created_at
 	`
 
@@ -32,13 +33,21 @@ func (r *ChatRepository) Create(message *models.ChatMessage) error {
 		userID = nil
 	}
 
-	err := r.db.QueryRow(
+	badgesJSON, err := json.Marshal(message.Badges)
+	if err != nil {
+		return fmt.Errorf("failed to marshal badges: %w", err)
+	}
+
+	err = r.db.QueryRow(
 		query,
 		message.ID,
 		message.RaceID,
 		userID,
 		message.Username,
 		message.Message,
+		message.Role,
+		badgesJSON,
+		message.SpecialEmote,
 	).Scan(&message.CreatedAt)
 
 	if err != nil {
@@ -51,7 +60,7 @@ func (r *ChatRepository) Create(message *models.ChatMessage) error {
 
 func (r *ChatRepository) GetByRaceID(raceID string, limit, offset int) ([]*models.ChatMessage, error) {
 	query := `
-		SELECT id, race_id, user_id, username, message, created_at
+		SELECT id, race_id, user_id, username, message, user_role, badges, special_emote, created_at
 		FROM chat_messages
 		WHERE race_id = $1
 		ORDER BY created_at DESC
@@ -68,6 +77,8 @@ func (r *ChatRepository) GetByRaceID(raceID string, limit, offset int) ([]*model
 	for rows.Next() {
 		var msg models.ChatMessage
 		var userID sql.NullString
+		var badgesJSON []byte
+		var specialEmote bool
 
 		err := rows.Scan(
 			&msg.ID,
@@ -75,6 +86,9 @@ func (r *ChatRepository) GetByRaceID(raceID string, limit, offset int) ([]*model
 			&userID,
 			&msg.Username,
 			&msg.Message,
+			&msg.Role,
+			&badgesJSON,
+			&specialEmote,
 			&msg.CreatedAt,
 		)
 		if err != nil {
@@ -84,6 +98,15 @@ func (r *ChatRepository) GetByRaceID(raceID string, limit, offset int) ([]*model
 		if userID.Valid {
 			msg.UserID = &userID.String
 		}
+
+		if len(badgesJSON) > 0 {
+			if err := json.Unmarshal(badgesJSON, &msg.Badges); err != nil {
+				msg.Badges = []string{}
+			}
+		} else {
+			msg.Badges = []string{}
+		}
+		msg.SpecialEmote = specialEmote
 
 		messages = append(messages, &msg)
 	}
@@ -102,7 +125,7 @@ func (r *ChatRepository) GetByRaceID(raceID string, limit, offset int) ([]*model
 
 func (r *ChatRepository) GetRecentByRaceID(raceID string, limit int) ([]*models.ChatMessage, error) {
 	query := `
-		SELECT id, race_id, user_id, username, message, created_at
+		SELECT id, race_id, user_id, username, message, user_role, badges, special_emote, created_at
 		FROM chat_messages
 		WHERE race_id = $1
 		ORDER BY created_at DESC
@@ -119,6 +142,8 @@ func (r *ChatRepository) GetRecentByRaceID(raceID string, limit int) ([]*models.
 	for rows.Next() {
 		var msg models.ChatMessage
 		var userID sql.NullString
+		var badgesJSON []byte
+		var specialEmote bool
 
 		err := rows.Scan(
 			&msg.ID,
@@ -126,6 +151,9 @@ func (r *ChatRepository) GetRecentByRaceID(raceID string, limit int) ([]*models.
 			&userID,
 			&msg.Username,
 			&msg.Message,
+			&msg.Role,
+			&badgesJSON,
+			&specialEmote,
 			&msg.CreatedAt,
 		)
 		if err != nil {
@@ -135,6 +163,15 @@ func (r *ChatRepository) GetRecentByRaceID(raceID string, limit int) ([]*models.
 		if userID.Valid {
 			msg.UserID = &userID.String
 		}
+
+		if len(badgesJSON) > 0 {
+			if err := json.Unmarshal(badgesJSON, &msg.Badges); err != nil {
+				msg.Badges = []string{}
+			}
+		} else {
+			msg.Badges = []string{}
+		}
+		msg.SpecialEmote = specialEmote
 
 		messages = append(messages, &msg)
 	}
@@ -158,6 +195,17 @@ func (r *ChatRepository) CountByRaceID(raceID string) (int, error) {
 	err := r.db.QueryRow(query, raceID).Scan(&count)
 	if err != nil {
 		return 0, fmt.Errorf("failed to count chat messages: %w", err)
+	}
+
+	return count, nil
+}
+
+func (r *ChatRepository) CountByUser(userID string) (int, error) {
+	query := `SELECT COUNT(*) FROM chat_messages WHERE user_id = $1`
+
+	var count int
+	if err := r.db.QueryRow(query, userID).Scan(&count); err != nil {
+		return 0, fmt.Errorf("failed to count user chat messages: %w", err)
 	}
 
 	return count, nil

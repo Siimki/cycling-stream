@@ -1,29 +1,60 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback } from 'react';
-import Link from 'next/link';
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useChatContext } from '@/components/chat/ChatProvider';
 import { useAuth } from '@/contexts/AuthContext';
+import { useExperience } from '@/contexts/ExperienceContext';
+import { useSound } from '@/components/providers/SoundProvider';
 import { getChatHistory, ChatMessage } from '@/lib/api';
 import { CHAT_HISTORY_LIMIT, CHAT_MESSAGE_MAX_LENGTH } from '@/constants/intervals';
-import { Send, Settings } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { useHudStats } from "@/components/user/HudStatsProvider"
-import { getUserColor, getUserBadge } from '@/lib/chat-utils';
+import { Send, Settings } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { useHudStats } from '@/components/user/HudStatsProvider';
+import ChatMessageRow from '@/components/chat/ChatMessageRow';
+import ChatPollCard from '@/components/chat/ChatPollCard';
 import { createContextLogger } from '@/lib/logger';
 
 const logger = createContextLogger('Chat');
 
 export default function Chat() {
-  const { messages: wsMessages, sendMessage, isConnected, error, reconnect, raceId, enabled } = useChatContext();
+  const {
+    messages: wsMessages,
+    sendMessage,
+    isConnected,
+    error,
+    reconnect,
+    raceId,
+    enabled,
+    activePoll,
+    lastClosedPoll,
+    voteInPoll,
+    pollVoteLoading,
+  } = useChatContext();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [historyLoaded, setHistoryLoaded] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const { isAuthenticated } = useAuth();
-  const { bonusReady, claimBonus } = useHudStats()
+  const { isAuthenticated, user } = useAuth();
+  const { bonusReady, claimBonus } = useHudStats();
+  const { resolvedUIPreferences, uiPreferences, updateUIPreferences } = useExperience();
+  const animationsEnabled = resolvedUIPreferences.chat_animations && !resolvedUIPreferences.reduced_motion;
+  const pollAnimationsEnabled = resolvedUIPreferences.poll_animations && !resolvedUIPreferences.reduced_motion;
+  const [dismissedPollId, setDismissedPollId] = useState<string | null>(null);
+  const { play } = useSound();
+  const pollSoundRef = useRef<string | null>(null);
+  const mentionSoundRef = useRef<string | null>(null);
+  const mentionTargets = useMemo(() => {
+    const targets = new Set<string>();
+    if (user?.name) {
+      targets.add(user.name.replace(/\s+/g, '').toLowerCase());
+    }
+    if (user?.email) {
+      targets.add(user.email.split('@')[0].toLowerCase());
+    }
+    return Array.from(targets).filter(Boolean);
+  }, [user]);
 
   // Load chat history on mount (only once)
   useEffect(() => {
@@ -43,10 +74,9 @@ export default function Chat() {
     }
   }, [enabled, raceId, historyLoaded]);
 
-  // Merge WebSocket messages with loaded history
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (historyLoaded && wsMessages.length > 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setMessages((prev) => {
         const existingIds = new Set(prev.map((m) => m.id));
         const newMessages = wsMessages.filter((m) => !existingIds.has(m.id));
@@ -59,8 +89,50 @@ export default function Chat() {
         return prev;
       });
     }
-    // wsMessages is intentionally not in deps - we want to merge when it changes
   }, [historyLoaded, wsMessages]);
+
+  useEffect(() => {
+    if (activePoll) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setDismissedPollId(null);
+    }
+  }, [activePoll]);
+
+  useEffect(() => {
+    if (!lastClosedPoll) {
+      return;
+    }
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setDismissedPollId(null);
+    const timer = setTimeout(() => {
+      setDismissedPollId(lastClosedPoll.id);
+    }, 8000);
+    return () => clearTimeout(timer);
+  }, [lastClosedPoll]);
+
+  useEffect(() => {
+    if (!activePoll || pollSoundRef.current === activePoll.id) {
+      return;
+    }
+    play('notification');
+    pollSoundRef.current = activePoll.id;
+  }, [activePoll, play]);
+
+  useEffect(() => {
+    if (!messages.length || mentionTargets.length === 0) {
+      return;
+    }
+    const latest = messages[messages.length - 1];
+    if (!latest || (user?.id && latest.user_id === user.id)) {
+      return;
+    }
+    const content = latest.message.toLowerCase();
+    const mentioned = mentionTargets.some((target) => target && content.includes(`@${target}`));
+    if (mentioned && mentionSoundRef.current !== latest.id) {
+      play('chat-mention');
+      mentionSoundRef.current = latest.id;
+    }
+  }, [messages, mentionTargets, play, user?.id]);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -81,6 +153,55 @@ export default function Chat() {
     [inputValue, sendMessage, isAuthenticated]
   );
 
+  const getPulseClass = useCallback(
+    (msg: ChatMessage) => {
+      if (!animationsEnabled || !msg.role) {
+        return undefined;
+      }
+      const createdAt = new Date(msg.created_at).getTime();
+      if (Date.now() - createdAt > 2000) {
+        return undefined;
+      }
+      switch (msg.role) {
+        case 'mod':
+          return 'chat-role-mod';
+        case 'vip':
+          return 'chat-role-vip';
+        case 'subscriber':
+          return 'chat-role-sub';
+        default:
+          return undefined;
+      }
+    },
+    [animationsEnabled]
+  );
+
+  const handlePollVote = useCallback(
+    async (optionId: string) => {
+      if (!activePoll) {
+        return;
+      }
+      await voteInPoll(activePoll.id, optionId);
+    },
+    [activePoll, voteInPoll]
+  );
+
+  const toggleAnimations = useCallback(() => {
+    updateUIPreferences({
+      chat_animations: !uiPreferences.chat_animations,
+    });
+  }, [uiPreferences.chat_animations, updateUIPreferences]);
+
+  const visibleClosedPoll = useMemo(() => {
+    if (!lastClosedPoll) {
+      return null;
+    }
+    if (dismissedPollId && dismissedPollId === lastClosedPoll.id) {
+      return null;
+    }
+    return lastClosedPoll;
+  }, [lastClosedPoll, dismissedPollId]);
+
 
   if (!enabled) {
     return null;
@@ -100,42 +221,53 @@ export default function Chat() {
             )}
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
-            <Settings className="w-4 h-4" />
-          </Button>
-        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-8 gap-2 text-xs text-muted-foreground hover:text-foreground"
+          onClick={toggleAnimations}
+        >
+          <Settings className="w-4 h-4" />
+          {uiPreferences.chat_animations ? 'Animations On' : 'Animations Off'}
+        </Button>
       </div>
 
       {/* Messages - Fixed height with scroll */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto chat-scroll px-5 py-4 min-h-0">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto chat-scroll px-5 py-4 min-h-0 space-y-3">
         {isLoading ? (
             <div className="flex items-center justify-center h-full text-muted-foreground text-base">Loading...</div>
         ) : (
-            <div className="space-y-2">
-            {messages.map((msg) => (
-                <div key={msg.id} className="leading-snug break-words transition-colors py-0.5" style={{ lineHeight: '1.4' }}>
-                {getUserBadge(msg.username)}
-                {msg.user_id ? (
-                    <Link 
-                      href={`/users/${msg.user_id}`}
-                      className="text-base font-bold cursor-pointer hover:underline mr-1.5 text-primary" 
-                      style={{ color: getUserColor(msg.username) }}
-                    >
-                      {msg.username}
-                    </Link>
-                ) : (
-                    <span className="text-base font-bold mr-1.5 text-primary" style={{ color: getUserColor(msg.username) }}>
-                      {msg.username}
-                    </span>
-                )}
-                <span className="text-muted-foreground text-base mr-1.5 font-medium">:</span>
-                <span className="text-[15px] text-foreground font-medium">{msg.message}</span>
-                </div>
-            ))}
-            {messages.length === 0 && (
+            <div className="space-y-3">
+              {activePoll && (
+                <ChatPollCard
+                  poll={activePoll}
+                  onVote={handlePollVote}
+                  loading={pollVoteLoading}
+                  animate={pollAnimationsEnabled}
+                  headline="Live poll"
+                />
+              )}
+              {!activePoll && visibleClosedPoll && (
+                <ChatPollCard
+                  poll={visibleClosedPoll}
+                  onVote={async () => {}}
+                  disabled
+                  animate={pollAnimationsEnabled}
+                  headline="Poll results"
+                  onDismiss={() => setDismissedPollId(visibleClosedPoll.id)}
+                />
+              )}
+              {messages.map((msg) => (
+                <ChatMessageRow
+                  key={msg.id}
+                  message={msg}
+                  animate={animationsEnabled}
+                  pulseClass={getPulseClass(msg)}
+                />
+              ))}
+              {messages.length === 0 && (
                 <div className="text-center text-muted-foreground text-lg mt-8">No messages yet. Say hello! 👋</div>
-            )}
+              )}
             </div>
         )}
       </div>

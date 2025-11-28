@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/gofiber/websocket/v2"
 	"github.com/cyclingstream/backend/internal/logger"
+	"github.com/gofiber/websocket/v2"
 )
 
 const (
@@ -175,3 +175,12 @@ func (c *Client) SendMessage(message []byte) bool {
 	}
 }
 
+// IsAdmin exposes whether the current client is an administrator.
+func (c *Client) IsAdmin() bool {
+	return c.isAdmin
+}
+
+// UserID returns the connected user's ID (if authenticated).
+func (c *Client) UserID() *string {
+	return c.userID
+}

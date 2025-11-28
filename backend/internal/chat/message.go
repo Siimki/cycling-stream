@@ -11,13 +11,16 @@ import (
 type MessageType string
 
 const (
-	MessageTypeMessage   MessageType = "message"
-	MessageTypeError     MessageType = "error"
-	MessageTypeJoined    MessageType = "joined"
-	MessageTypeLeft      MessageType = "left"
-	MessageTypePing      MessageType = "ping"
-	MessageTypePong      MessageType = "pong"
-	MessageTypeSendMessage MessageType = "send_message"
+	MessageTypeMessage          MessageType = "message"
+	MessageTypeError            MessageType = "error"
+	MessageTypeJoined           MessageType = "joined"
+	MessageTypeLeft             MessageType = "left"
+	MessageTypePing             MessageType = "ping"
+	MessageTypePong             MessageType = "pong"
+	MessageTypeSendMessage      MessageType = "send_message"
+	MessageTypePollAnnouncement MessageType = "poll_announcement"
+	MessageTypePollUpdate       MessageType = "poll_update"
+	MessageTypePollClosed       MessageType = "poll_closed"
 )
 
 // WSMessage represents a WebSocket message
@@ -28,12 +31,20 @@ type WSMessage struct {
 
 // ChatMessageData represents chat message data in WebSocket messages
 type ChatMessageData struct {
-	ID        string    `json:"id"`
-	RaceID    string    `json:"race_id"`
-	UserID    *string   `json:"user_id,omitempty"`
-	Username  string    `json:"username"`
-	Message   string    `json:"message"`
-	CreatedAt time.Time `json:"created_at"`
+	ID           string    `json:"id"`
+	RaceID       string    `json:"race_id"`
+	UserID       *string   `json:"user_id,omitempty"`
+	Username     string    `json:"username"`
+	Message      string    `json:"message"`
+	CreatedAt    time.Time `json:"created_at"`
+	Role         string    `json:"role,omitempty"`
+	Badges       []string  `json:"badges,omitempty"`
+	SpecialEmote bool      `json:"special_emote,omitempty"`
+}
+
+// PollMessageData represents poll updates sent over WebSocket.
+type PollMessageData struct {
+	*Poll `json:"poll"`
 }
 
 // ErrorData represents error data in WebSocket messages
@@ -56,13 +67,37 @@ func NewMessageWSMessage(msg *models.ChatMessage) *WSMessage {
 	return &WSMessage{
 		Type: string(MessageTypeMessage),
 		Data: ChatMessageData{
-			ID:        msg.ID,
-			RaceID:    msg.RaceID,
-			UserID:    msg.UserID,
-			Username:  msg.Username,
-			Message:   msg.Message,
-			CreatedAt: msg.CreatedAt,
+			ID:           msg.ID,
+			RaceID:       msg.RaceID,
+			UserID:       msg.UserID,
+			Username:     msg.Username,
+			Message:      msg.Message,
+			CreatedAt:    msg.CreatedAt,
+			Role:         msg.Role,
+			Badges:       msg.Badges,
+			SpecialEmote: msg.SpecialEmote,
 		},
+	}
+}
+
+func NewPollAnnouncementMessage(poll *Poll) *WSMessage {
+	return &WSMessage{
+		Type: string(MessageTypePollAnnouncement),
+		Data: poll,
+	}
+}
+
+func NewPollUpdateMessage(poll *Poll) *WSMessage {
+	return &WSMessage{
+		Type: string(MessageTypePollUpdate),
+		Data: poll,
+	}
+}
+
+func NewPollClosedMessage(poll *Poll) *WSMessage {
+	return &WSMessage{
+		Type: string(MessageTypePollClosed),
+		Data: poll,
 	}
 }
 
@@ -130,4 +165,3 @@ func ParseSendMessageData(msg *WSMessage) (*SendMessageData, error) {
 
 	return &data, nil
 }
-

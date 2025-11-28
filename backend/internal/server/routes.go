@@ -10,6 +10,7 @@ import (
 	"github.com/cyclingstream/backend/internal/services"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
+	"log"
 )
 
 func SetupRoutes(app *fiber.App, db *database.DB, cfg *config.Config, hub *chat.Hub, rateLimiter *chat.RateLimiter) {
@@ -20,14 +21,14 @@ func SetupRoutes(app *fiber.App, db *database.DB, cfg *config.Config, hub *chat.
 	// CORS configuration - environment-aware
 	corsOrigins := cfg.FrontendURL
 	if cfg.Env == "development" {
-		// In development, allow localhost:3000 by default if not set in FrontendURL, 
+		// In development, allow localhost:3000 by default if not set in FrontendURL,
 		// but since FrontendURL defaults to localhost:3000, we can just use that.
 		// If we need multiple, we can comma separate them.
 		if corsOrigins == "*" {
-             // If someone explicitly set FRONTEND_URL=*, we can't use AllowCredentials=true
-             // But let's assume we want credentials.
-             corsOrigins = "http://localhost:3000"
-        }
+			// If someone explicitly set FRONTEND_URL=*, we can't use AllowCredentials=true
+			// But let's assume we want credentials.
+			corsOrigins = "http://localhost:3000"
+		}
 	}
 
 	app.Use(cors.New(cors.Config{
@@ -48,6 +49,7 @@ func SetupRoutes(app *fiber.App, db *database.DB, cfg *config.Config, hub *chat.
 	viewerSessionRepo := repository.NewViewerSessionRepository(db.DB)
 	costRepo := repository.NewCostRepository(db.DB)
 	chatRepo := repository.NewChatRepository(db.DB)
+	achievementRepo := repository.NewAchievementRepository(db.DB)
 	userPrefsRepo := repository.NewUserPreferencesRepository(db.DB)
 	userFavRepo := repository.NewUserFavoriteRepository(db.DB)
 	watchHistoryRepo := repository.NewWatchHistoryRepository(db.DB)
@@ -59,7 +61,12 @@ func SetupRoutes(app *fiber.App, db *database.DB, cfg *config.Config, hub *chat.
 	weeklyRepo := repository.NewWeeklyRepository(db.DB)
 	streakRepo := repository.NewStreakRepository(db.DB)
 	weeklyService := services.NewWeeklyService(weeklyRepo, streakRepo, userRepo, xpService, cfg.XP)
-	missionTriggers := services.NewMissionTriggers(missionService, xpService, weeklyService, cfg.XP)
+	achievementService := services.NewAchievementService(achievementRepo, chatRepo, watchSessionRepo, userRepo)
+	if err := achievementService.SeedDefaults(); err != nil {
+		log.Printf("failed to seed achievements: %v", err)
+	}
+	xpService.SetAchievementService(achievementService)
+	missionTriggers := services.NewMissionTriggers(missionService, xpService, weeklyService, achievementService, cfg.XP)
 	predictionRepo := repository.NewPredictionRepository(db.DB)
 	predictionService := services.NewPredictionService(predictionRepo, userRepo, xpService, missionTriggers, cfg.XP)
 
@@ -85,7 +92,8 @@ func SetupRoutes(app *fiber.App, db *database.DB, cfg *config.Config, hub *chat.
 		revenueRepo,
 	)
 	costHandler := handlers.NewCostHandler(costRepo, raceRepo)
-	chatHandler := handlers.NewChatHandler(chatRepo, raceRepo, streamRepo, userRepo, hub, rateLimiter, missionTriggers)
+	pollManager := chat.NewPollManager()
+	chatHandler := handlers.NewChatHandler(chatRepo, raceRepo, streamRepo, userRepo, entitlementRepo, hub, rateLimiter, missionTriggers, pollManager)
 	userHandler := handlers.NewUserHandler(userRepo, watchSessionRepo)
 	userPrefsHandler := handlers.NewUserPreferencesHandler(userPrefsRepo)
 	userFavHandler := handlers.NewUserFavoritesHandler(userFavRepo)
@@ -95,6 +103,7 @@ func SetupRoutes(app *fiber.App, db *database.DB, cfg *config.Config, hub *chat.
 	xpHandler := handlers.NewXPHandler(userRepo, xpService)
 	weeklyHandler := handlers.NewWeeklyHandler(weeklyService)
 	predictionsHandler := handlers.NewPredictionsHandler(predictionService)
+	achievementsHandler := handlers.NewAchievementsHandler(achievementService)
 
 	// Middleware instances
 	authMiddleware := middleware.AuthMiddleware(cfg.JWTSecret)
@@ -108,8 +117,8 @@ func SetupRoutes(app *fiber.App, db *database.DB, cfg *config.Config, hub *chat.
 	setupAuthRoutes(app, authHandler)
 	setupViewerRoutes(app, viewerHandler, optionalUserAuthMiddleware)
 	setupStreamRoutes(app, raceHandler, streamHandler, optionalUserAuthMiddleware)
-	setupChatRoutes(app, chatHandler, chatAuthMiddleware)
-	setupUserRoutes(app, authHandler, paymentHandler, watchHandler, userPrefsHandler, userFavHandler, watchHistoryHandler, recommendationsHandler, missionsHandler, xpHandler, weeklyHandler, userAuthMiddleware, csrfProtection)
+	setupChatRoutes(app, chatHandler, chatAuthMiddleware, authMiddleware, userAuthMiddleware)
+	setupUserRoutes(app, authHandler, paymentHandler, watchHandler, userPrefsHandler, userFavHandler, watchHistoryHandler, recommendationsHandler, missionsHandler, xpHandler, weeklyHandler, achievementsHandler, userAuthMiddleware, csrfProtection)
 	setupPredictionRoutes(app, predictionsHandler, optionalUserAuthMiddleware, userAuthMiddleware, csrfProtection)
 	setupWebhookRoutes(app, paymentHandler)
 	setupAdminRoutes(app, adminHandler, analyticsHandler, costHandler, authMiddleware, csrfProtection)
@@ -156,54 +165,60 @@ func setupStreamRoutes(app *fiber.App, raceHandler *handlers.RaceHandler, stream
 	stream.Get("/races/:id/stream/status", streamHandler.GetStreamStatus)
 }
 
-func setupChatRoutes(app *fiber.App, chatHandler *handlers.ChatHandler, chatAuth fiber.Handler) {
+func setupChatRoutes(app *fiber.App, chatHandler *handlers.ChatHandler, chatAuth fiber.Handler, adminAuth fiber.Handler, userAuth fiber.Handler) {
 	// Chat routes - MUST be before /races/:id to avoid route conflicts
 	chatRoutes := app.Group("", middleware.LenientRateLimiter())
 	chatRoutes.Get("/races/:id/chat/ws", chatAuth, chatHandler.HandleWebSocket)
 	chatRoutes.Get("/races/:id/chat/history", chatHandler.GetChatHistory)
 	chatRoutes.Get("/races/:id/chat/stats", chatHandler.GetChatStats)
+	chatRoutes.Post("/races/:id/chat/polls", adminAuth, chatHandler.CreatePoll)
+	chatRoutes.Post("/races/:id/chat/polls/:pollId/close", adminAuth, chatHandler.ClosePoll)
+	chatRoutes.Post("/races/:id/chat/polls/:pollId/vote", userAuth, chatHandler.CastPollVote)
 }
 
-func setupUserRoutes(app *fiber.App, authHandler *handlers.AuthHandler, paymentHandler *handlers.PaymentHandler, watchHandler *handlers.WatchHandler, userPrefsHandler *handlers.UserPreferencesHandler, userFavHandler *handlers.UserFavoritesHandler, watchHistoryHandler *handlers.WatchHistoryHandler, recommendationsHandler *handlers.RecommendationsHandler, missionsHandler *handlers.MissionsHandler, xpHandler *handlers.XPHandler, weeklyHandler *handlers.WeeklyHandler, userAuth fiber.Handler, csrf fiber.Handler) {
+func setupUserRoutes(app *fiber.App, authHandler *handlers.AuthHandler, paymentHandler *handlers.PaymentHandler, watchHandler *handlers.WatchHandler, userPrefsHandler *handlers.UserPreferencesHandler, userFavHandler *handlers.UserFavoritesHandler, watchHistoryHandler *handlers.WatchHistoryHandler, recommendationsHandler *handlers.RecommendationsHandler, missionsHandler *handlers.MissionsHandler, xpHandler *handlers.XPHandler, weeklyHandler *handlers.WeeklyHandler, achievementsHandler *handlers.AchievementsHandler, userAuth fiber.Handler, csrf fiber.Handler) {
 	// Protected user routes with standard rate limiting and CSRF protection
 	user := app.Group("/users", userAuth, middleware.StandardRateLimiter(), csrf)
 	user.Get("/me", authHandler.GetProfile)
 	user.Post("/me/password", authHandler.ChangePassword)
-	user.Post("/me/points/tick", authHandler.AwardWatchPoints) // 10 points for watching
+	user.Post("/me/points/tick", authHandler.AwardWatchPoints)  // 10 points for watching
 	user.Post("/me/points/bonus", authHandler.AwardBonusPoints) // 50 points for claim bonus
 	user.Post("/payments/create-checkout", paymentHandler.CreateCheckout)
 	user.Post("/watch/sessions/start", watchHandler.StartSession)
 	user.Post("/watch/sessions/end", watchHandler.EndSession)
 	user.Get("/watch/sessions/stats/:race_id", watchHandler.GetStats)
-	
+
 	// User preferences routes
 	user.Get("/me/preferences", userPrefsHandler.GetPreferences)
 	user.Put("/me/preferences", userPrefsHandler.UpdatePreferences)
 	user.Post("/me/onboarding/complete", userPrefsHandler.CompleteOnboarding)
-	
+
 	// User favorites routes
 	user.Get("/me/favorites", userFavHandler.GetFavorites)
 	user.Post("/me/favorites", userFavHandler.AddFavorite)
 	user.Delete("/me/favorites/:type/:id", userFavHandler.RemoveFavorite)
-	
+
 	// Watch history routes
 	user.Get("/me/watch-history", watchHistoryHandler.GetWatchHistory)
-	
+
 	// Recommendations routes
 	user.Get("/me/recommendations", recommendationsHandler.GetAllRecommendations)
 	user.Get("/me/recommendations/continue-watching", recommendationsHandler.GetContinueWatching)
 	user.Get("/me/recommendations/upcoming", recommendationsHandler.GetUpcoming)
 	user.Get("/me/recommendations/replays", recommendationsHandler.GetReplays)
-	
+
 	// Missions routes
 	user.Get("/me/missions", missionsHandler.GetUserMissions)
 	user.Get("/me/missions/career", missionsHandler.GetCareerMissions)
 	user.Get("/me/missions/weekly", missionsHandler.GetWeeklyMissions)
 	user.Post("/me/missions/:missionId/claim", missionsHandler.ClaimMissionReward)
-	
+
 	// XP routes
 	user.Get("/me/xp", xpHandler.GetUserXPProgress)
-	
+
+	// Achievements
+	user.Get("/me/achievements", achievementsHandler.GetUserAchievements)
+
 	// Weekly routes
 	user.Get("/me/weekly", weeklyHandler.GetWeeklyProgress)
 }
@@ -219,11 +234,11 @@ func setupPredictionRoutes(app *fiber.App, predictionsHandler *handlers.Predicti
 	// Prediction routes - public for markets, protected for bets
 	predictions := app.Group("", middleware.LenientRateLimiter())
 	predictions.Get("/races/:id/predictions", optionalAuth, predictionsHandler.GetRacePredictions)
-	
+
 	// Protected bet routes - placed at race level (before /races/:id route to avoid conflicts)
 	betRoutes := app.Group("", userAuth, middleware.StandardRateLimiter(), csrf)
 	betRoutes.Post("/races/:id/predictions/:marketId/bet", predictionsHandler.PlaceBet)
-	
+
 	// User predictions route (in /users group)
 	userPredictions := app.Group("/users", userAuth, middleware.StandardRateLimiter(), csrf)
 	userPredictions.Get("/me/predictions", predictionsHandler.GetUserPredictions)

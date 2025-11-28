@@ -74,3 +74,26 @@ export const radius = {
   xl: '12px',
 } as const;
 
+// Motion Tokens
+export const motion = {
+  durations: {
+    instant: 80,
+    fast: 150,
+    base: 200,
+    slow: 300,
+    pulse: 500,
+  },
+  easing: {
+    sharp: 'cubic-bezier(0.32, 0.72, 0, 1)',
+    spring: 'cubic-bezier(0.16, 1, 0.3, 1)',
+    bounce: 'cubic-bezier(0.34, 1.56, 0.64, 1)',
+    linear: 'linear',
+  },
+  zIndex: {
+    chatGlow: 15,
+    overlay: 40,
+    toast: 45,
+    levelUp: 60,
+  },
+} as const;
+

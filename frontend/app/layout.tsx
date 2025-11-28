@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { ExperienceProvider } from "@/contexts/ExperienceContext";
+import { SoundProvider } from "@/components/providers/SoundProvider";
+import { AchievementProvider } from "@/components/providers/AchievementProvider";
 import { OnboardingGuard } from "@/components/onboarding/OnboardingGuard";
 
 const geistSans = Geist({
@@ -30,9 +33,15 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased flex flex-col min-h-screen bg-background text-foreground`}
       >
         <AuthProvider>
-          <OnboardingGuard>
-            {children}
-          </OnboardingGuard>
+          <ExperienceProvider>
+            <SoundProvider>
+              <AchievementProvider>
+                <OnboardingGuard>
+                  {children}
+                </OnboardingGuard>
+              </AchievementProvider>
+            </SoundProvider>
+          </ExperienceProvider>
         </AuthProvider>
       </body>
     </html>

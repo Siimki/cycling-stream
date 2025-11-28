@@ -4,6 +4,7 @@
 
 import * as React from 'react';
 import { USER_COLORS } from '@/constants/colors';
+import { cn } from '@/lib/utils';
 
 /**
  * Gets a consistent color for a username based on hash
@@ -17,24 +18,28 @@ export function getUserColor(username: string): string {
   return USER_COLORS[index];
 }
 
-/**
- * Gets a badge element for a username based on hash
- * Returns null if no badge should be shown
- */
-export function getUserBadge(username: string): React.ReactElement | null {
-  let hash = 0;
-  for (let i = 0; i < username.length; i++) {
-    hash = username.charCodeAt(i) + ((hash << 5) - hash);
+const BADGE_STYLES: Record<string, string> = {
+  mod: 'bg-emerald-500/15 text-emerald-300',
+  vip: 'bg-purple-500/20 text-purple-300',
+  sub: 'bg-primary/20 text-primary',
+  og: 'bg-amber-500/20 text-amber-300',
+};
+
+export function renderUserBadges(badges?: string[]): React.ReactElement[] {
+  if (!badges || badges.length === 0) {
+    return [];
   }
-  const rand = Math.abs(hash) % 10;
-  
-  const baseClass = "px-1.5 py-0.5 text-xs font-bold uppercase rounded mr-1.5 align-middle inline-block";
-  
-  if (rand === 0) return <span className={`${baseClass} bg-green-500/20 text-green-400`}>mod</span>;
-  if (rand === 1) return <span className={`${baseClass} bg-pink-500/20 text-pink-400`}>vip</span>;
-  if (rand === 2) return <span className={`${baseClass} bg-primary/20 text-primary`}>sub</span>;
-  if (rand === 3) return <span className={`${baseClass} bg-amber-500/20 text-amber-400`}>og</span>;
-  
-  return null;
+
+  return badges.map((badge, index) => (
+    <span
+      key={`${badge}-${index}`}
+      className={cn(
+        'px-1.5 py-0.5 text-[10px] font-bold uppercase rounded mr-1.5 align-middle inline-block tracking-wide',
+        BADGE_STYLES[badge] ?? 'bg-muted/60 text-muted-foreground'
+      )}
+    >
+      {badge}
+    </span>
+  ));
 }
 

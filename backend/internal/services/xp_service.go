@@ -8,8 +8,9 @@ import (
 )
 
 type XPService struct {
-	userRepo *repository.UserRepository
-	cfg      *config.LevelingConfig
+	userRepo           *repository.UserRepository
+	cfg                *config.LevelingConfig
+	achievementService *AchievementService
 }
 
 func NewXPService(userRepo *repository.UserRepository, cfg *config.LevelingConfig) *XPService {
@@ -17,6 +18,10 @@ func NewXPService(userRepo *repository.UserRepository, cfg *config.LevelingConfi
 		userRepo: userRepo,
 		cfg:      cfg,
 	}
+}
+
+func (s *XPService) SetAchievementService(service *AchievementService) {
+	s.achievementService = service
 }
 
 // AwardXP awards XP to a user and recalculates their level if needed.
@@ -47,6 +52,9 @@ func (s *XPService) AwardXP(userID string, xp int, source string) error {
 	if newLevel > user.Level {
 		if err := s.userRepo.UpdateLevel(userID, newLevel); err != nil {
 			return fmt.Errorf("failed to update level: %w", err)
+		}
+		if s.achievementService != nil {
+			go s.achievementService.HandleLevelUp(userID, newLevel)
 		}
 	}
 
@@ -97,5 +105,3 @@ func (s *XPService) GetLevelProgress(xp int, level int) (currentXP, neededXP int
 
 	return currentXPInLevel, xpNeeded
 }
-
-

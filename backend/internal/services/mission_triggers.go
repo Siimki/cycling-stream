@@ -10,10 +10,11 @@ import (
 )
 
 type MissionTriggers struct {
-	missionService *MissionService
-	xpService      *XPService
-	weeklyService  *WeeklyService
-	xpConfig       *config.XPConfig
+	missionService     *MissionService
+	xpService          *XPService
+	weeklyService      *WeeklyService
+	achievementService *AchievementService
+	xpConfig           *config.XPConfig
 	// Track XP awarded per user per race (in-memory, resets on restart)
 	// Key: userID:raceID, Value: XP awarded
 	xpPerRace map[string]int
@@ -24,14 +25,15 @@ type MissionTriggers struct {
 	chatMutex  sync.RWMutex
 }
 
-func NewMissionTriggers(missionService *MissionService, xpService *XPService, weeklyService *WeeklyService, xpConfig *config.XPConfig) *MissionTriggers {
+func NewMissionTriggers(missionService *MissionService, xpService *XPService, weeklyService *WeeklyService, achievementService *AchievementService, xpConfig *config.XPConfig) *MissionTriggers {
 	return &MissionTriggers{
-		missionService: missionService,
-		xpService:      xpService,
-		weeklyService:  weeklyService,
-		xpConfig:       xpConfig,
-		xpPerRace:      make(map[string]int),
-		lastChatXP:     make(map[string]time.Time),
+		missionService:     missionService,
+		xpService:          xpService,
+		weeklyService:      weeklyService,
+		achievementService: achievementService,
+		xpConfig:           xpConfig,
+		xpPerRace:          make(map[string]int),
+		lastChatXP:         make(map[string]time.Time),
 	}
 }
 
@@ -40,6 +42,9 @@ func NewMissionTriggers(missionService *MissionService, xpService *XPService, we
 // raceID is required for XP cap tracking
 // isLive indicates if the race stream is currently live (for weekly stats)
 func (t *MissionTriggers) OnWatchTime(userID, raceID string, durationSeconds int, isLive bool) error {
+	if t.achievementService != nil {
+		go t.achievementService.HandleWatchTime(userID)
+	}
 	// Convert seconds to minutes for watch_time missions
 	// We increment by minutes watched
 	minutesWatched := durationSeconds / 60
@@ -113,6 +118,9 @@ func (t *MissionTriggers) OnWatchTime(userID, raceID string, durationSeconds int
 // raceID is required for XP cap tracking and spam guard
 // isLive indicates if the race stream is currently live (for weekly stats)
 func (t *MissionTriggers) OnChatMessage(userID, raceID string, isLive bool) error {
+	if t.achievementService != nil {
+		go t.achievementService.HandleChatMessage(userID)
+	}
 	if err := t.missionService.UpdateMissionProgress(userID, models.MissionTypeChatMessage, 1); err != nil {
 		return fmt.Errorf("failed to update chat message mission progress: %w", err)
 	}
@@ -198,6 +206,9 @@ func (t *MissionTriggers) OnStreakDay(userID string) error {
 	if err := t.missionService.UpdateMissionProgress(userID, models.MissionTypeStreak, 1); err != nil {
 		return fmt.Errorf("failed to update streak mission progress: %w", err)
 	}
+	if t.achievementService != nil {
+		go t.achievementService.HandleStreak(userID)
+	}
 	return nil
 }
 
@@ -257,4 +268,3 @@ func (t *MissionTriggers) OnPredictionWon(userID string) error {
 
 	return nil
 }
-

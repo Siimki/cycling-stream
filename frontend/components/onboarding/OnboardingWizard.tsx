@@ -8,8 +8,17 @@ import { StepViewPreference } from './StepViewPreference';
 import { StepFavorites } from './StepFavorites';
 import { StepDevice } from './StepDevice';
 import { StepNotifications } from './StepNotifications';
-import { updateUserPreferences, completeOnboarding, addFavorite, type UpdatePreferencesRequest, type AddFavoriteRequest } from '@/lib/api';
+import {
+  updateUserPreferences,
+  completeOnboarding,
+  addFavorite,
+  type UpdatePreferencesRequest,
+  type AddFavoriteRequest,
+  type UpdateUIPreferencesRequest,
+  type UpdateAudioPreferencesRequest,
+} from '@/lib/api';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useExperience } from '@/contexts/ExperienceContext';
 
 export interface OnboardingData {
   cyclingLevel: 'new' | 'casual' | 'superfan' | null;
@@ -27,6 +36,7 @@ const STORAGE_KEY = 'onboarding_data';
 
 export function OnboardingWizard() {
   const router = useRouter();
+  const { refreshPreferences } = useExperience();
   const [currentStep, setCurrentStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<OnboardingData>(() => {
@@ -121,6 +131,20 @@ export function OnboardingWizard() {
         }
       }
 
+      const uiPreferences: UpdateUIPreferencesRequest = {
+        chat_animations: data.viewPreference !== 'clean',
+        reduced_motion: data.viewPreference === 'clean',
+        button_pulse: true,
+        poll_animations: data.viewPreference !== 'clean',
+      };
+
+      const audioPreferences: UpdateAudioPreferencesRequest = {
+        button_clicks: true,
+        notification_sounds: data.notifications.races || data.notifications.points,
+        mention_pings: true,
+        master_volume: 0.2,
+      };
+
       const prefs: UpdatePreferencesRequest = {
         data_mode: data.viewPreference === 'clean' ? 'casual' : data.viewPreference === 'data-rich' ? 'pro' : 'standard',
         device_type: primaryDevice,
@@ -130,6 +154,8 @@ export function OnboardingWizard() {
           races: data.notifications.races,
         },
         onboarding_completed: true,
+        ui_preferences: uiPreferences,
+        audio_preferences: audioPreferences,
       };
 
       // Save preferences
@@ -147,6 +173,7 @@ export function OnboardingWizard() {
 
       // Mark onboarding as complete
       await completeOnboarding();
+      await refreshPreferences();
 
       // Clear localStorage
       if (typeof window !== 'undefined') {
@@ -155,17 +182,21 @@ export function OnboardingWizard() {
 
       // Redirect to home
       router.push('/');
-    } catch (error: any) {
+    } catch (error) {
       console.error('Failed to complete onboarding:', error);
+      const status = typeof error === 'object' && error !== null && 'status' in error
+        ? (error as { status?: number }).status
+        : undefined;
+      const message = error instanceof Error ? error.message : 'Unknown error';
       
       // Provide more specific error messages
-      if (error?.status === 401 || error?.status === 403) {
+      if (status === 401 || status === 403) {
         alert('Your session has expired. Please log in again and complete onboarding.');
         router.push('/auth/login');
-      } else if (error?.status === 404) {
+      } else if (status === 404) {
         alert('The preferences endpoint is not available. Please refresh the page and try again.');
       } else {
-        alert(`Failed to save preferences: ${error?.message || 'Unknown error'}. Please try again.`);
+        alert(`Failed to save preferences: ${message}. Please try again.`);
       }
     } finally {
       setLoading(false);

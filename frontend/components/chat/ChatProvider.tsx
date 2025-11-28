@@ -2,7 +2,7 @@
 
 import { createContext, useContext, ReactNode } from 'react';
 import { useChat } from '@/hooks/useChat';
-import { ChatMessage } from '@/lib/api';
+import { ChatMessage, ChatPoll } from '@/lib/api';
 
 interface ChatContextType {
   messages: ChatMessage[];
@@ -12,6 +12,11 @@ interface ChatContextType {
   reconnect: () => void;
   raceId: string;
   enabled: boolean;
+  activePoll: ChatPoll | null;
+  lastClosedPoll: ChatPoll | null;
+  pollError: string | null;
+  voteInPoll: (pollId: string, optionId: string) => Promise<void>;
+  pollVoteLoading: boolean;
 }
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);

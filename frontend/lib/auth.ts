@@ -6,6 +6,9 @@ export interface User {
   name?: string;
   bio: string;
   points: number;
+  level?: number;
+  xp_total?: number;
+  best_streak_weeks?: number;
   created_at: string;
   updated_at: string;
 }

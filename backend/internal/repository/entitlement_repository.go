@@ -98,3 +98,23 @@ func (r *EntitlementRepository) HasAccess(userID, raceID string) (bool, error) {
 
 	return entitlement != nil, nil
 }
+
+// HasActiveSubscription returns true if the user has an active recurring entitlement.
+func (r *EntitlementRepository) HasActiveSubscription(userID string) (bool, error) {
+	query := `
+		SELECT EXISTS(
+			SELECT 1
+			FROM entitlements
+			WHERE user_id = $1
+				AND type IN ('subscription', 'season_pass')
+				AND (expires_at IS NULL OR expires_at > NOW())
+		)
+	`
+
+	var exists bool
+	if err := r.db.QueryRow(query, userID).Scan(&exists); err != nil {
+		return false, fmt.Errorf("failed to check subscription entitlements: %w", err)
+	}
+
+	return exists, nil
+}

@@ -7,6 +7,7 @@ import (
 	"github.com/cyclingstream/backend/internal/config"
 	"github.com/cyclingstream/backend/internal/models"
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 )
 
 type UserRepository struct {
@@ -71,6 +72,64 @@ func (r *UserRepository) GetByID(id string) (*models.User, error) {
 	}
 
 	return &user, nil
+}
+
+// GetByIDs returns a map of userID -> user for the provided IDs.
+func (r *UserRepository) GetByIDs(ids []string) (map[string]*models.User, error) {
+	result := make(map[string]*models.User, len(ids))
+	if len(ids) == 0 {
+		return result, nil
+	}
+
+	unique := make([]string, 0, len(ids))
+	seen := make(map[string]struct{}, len(ids))
+	for _, id := range ids {
+		if id == "" {
+			continue
+		}
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		unique = append(unique, id)
+	}
+
+	if len(unique) == 0 {
+		return result, nil
+	}
+
+	query := `SELECT id, email, password_hash, name, bio, points, xp_total, level, best_streak_weeks, created_at, updated_at FROM users WHERE id = ANY($1)`
+	rows, err := r.db.Query(query, pq.Array(unique))
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch users: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var user models.User
+		if err := rows.Scan(
+			&user.ID,
+			&user.Email,
+			&user.PasswordHash,
+			&user.Name,
+			&user.Bio,
+			&user.Points,
+			&user.XPTotal,
+			&user.Level,
+			&user.BestStreakWeeks,
+			&user.CreatedAt,
+			&user.UpdatedAt,
+		); err != nil {
+			return nil, fmt.Errorf("failed to scan user row: %w", err)
+		}
+		result[user.ID] = &user
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating users: %w", err)
+	}
+
+	return result, nil
 }
 
 func (r *UserRepository) GetPublicByID(id string) (*models.PublicUser, error) {
@@ -307,7 +366,7 @@ func GetLevelFromXP(xp int, cfg *config.LevelingConfig) int {
 	if cfg.IncrementPerLevel <= 0 {
 		return 1
 	}
-	
+
 	// Binary search for the correct level
 	low := 2
 	high := 1000 // Reasonable max level
@@ -328,10 +387,11 @@ func GetLevelFromXP(xp int, cfg *config.LevelingConfig) int {
 // Level N (N > 1): returns BaseXP + IncrementPerLevel * sum(1 to N-2)
 // Progressive formula using triangular numbers: BaseXP + IncrementPerLevel * (N-2)(N-1)/2
 // This means each level requires progressively more XP:
-//   Level 2: BaseXP (e.g., 100)
-//   Level 3: BaseXP + IncrementPerLevel (e.g., 120)
-//   Level 4: BaseXP + IncrementPerLevel * 3 (e.g., 160)
-//   Level 5: BaseXP + IncrementPerLevel * 6 (e.g., 220)
+//
+//	Level 2: BaseXP (e.g., 100)
+//	Level 3: BaseXP + IncrementPerLevel (e.g., 120)
+//	Level 4: BaseXP + IncrementPerLevel * 3 (e.g., 160)
+//	Level 5: BaseXP + IncrementPerLevel * 6 (e.g., 220)
 func GetXPForLevel(level int, cfg *config.LevelingConfig) int {
 	if level <= 1 {
 		return 0
@@ -343,7 +403,7 @@ func GetXPForLevel(level int, cfg *config.LevelingConfig) int {
 	// This uses triangular numbers: sum(1 to n) = n(n+1)/2
 	// For level N, we need sum(1 to N-2) = (N-2)(N-1)/2
 	n := level - 2
-	return cfg.BaseXP + (cfg.IncrementPerLevel * n * (n + 1)) / 2
+	return cfg.BaseXP + (cfg.IncrementPerLevel*n*(n+1))/2
 }
 
 // GetXPForNextLevel returns the XP needed to reach the NEXT level (level N+1) from the current level N.

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { getToken } from '@/lib/auth';
 import { ChatMessage } from '@/lib/api';
 import { WS_URL } from '@/lib/config';
-import { WEBSOCKET_PING_INTERVAL_MS, WEBSOCKET_RECONNECT_DELAY_MS, WEBSOCKET_MAX_RECONNECT_DELAY_MS } from '@/constants/intervals';
+import { WEBSOCKET_PING_INTERVAL_MS } from '@/constants/intervals';
 import { createContextLogger } from '@/lib/logger';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -22,12 +22,21 @@ interface UseChatReturn {
   isConnected: boolean;
   error: string | null;
   reconnect: () => void;
+  activePoll: ChatPoll | null;
+  lastClosedPoll: ChatPoll | null;
+  pollError: string | null;
+  voteInPoll: (pollId: string, optionId: string) => Promise<void>;
+  pollVoteLoading: boolean;
 }
 
 export function useChat(raceId: string, enabled: boolean): UseChatReturn {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [activePoll, setActivePoll] = useState<ChatPoll | null>(null);
+  const [lastClosedPoll, setLastClosedPoll] = useState<ChatPoll | null>(null);
+  const [pollError, setPollError] = useState<string | null>(null);
+  const [pollVoteLoading, setPollVoteLoading] = useState(false);
   
   // We use a ref for the WebSocket to access it in cleanup/callbacks without re-triggering effects
   const wsRef = useRef<WebSocket | null>(null);
@@ -206,6 +215,9 @@ export function useChat(raceId: string, enabled: boolean): UseChatReturn {
                         username: msg.data.username,
                         message: msg.data.message,
                         created_at: msg.data.created_at,
+                        role: msg.data.role,
+                        badges: msg.data.badges,
+                        special_emote: msg.data.special_emote,
                       };
                       setMessages((prev) => {
                         if (prev.some(m => m.id === chatMsg.id)) return prev;
@@ -228,6 +240,38 @@ export function useChat(raceId: string, enabled: boolean): UseChatReturn {
                   case 'left':
                     // Silently handle join/leave messages (they're informational)
                     logger.debug(`User ${msg.type}:`, msg.data?.username);
+                    break;
+                  case 'poll_announcement':
+                    if (msg.data) {
+                      try {
+                        const poll = msg.data as ChatPoll;
+                        setActivePoll(poll);
+                        setLastClosedPoll(null);
+                      } catch (pollErr) {
+                        logger.error('Failed to parse poll announcement:', pollErr);
+                      }
+                    }
+                    break;
+                  case 'poll_update':
+                    if (msg.data) {
+                      try {
+                        const poll = msg.data as ChatPoll;
+                        setActivePoll(poll);
+                      } catch (pollErr) {
+                        logger.error('Failed to parse poll update:', pollErr);
+                      }
+                    }
+                    break;
+                  case 'poll_closed':
+                    if (msg.data) {
+                      try {
+                        const poll = msg.data as ChatPoll;
+                        setActivePoll(null);
+                        setLastClosedPoll(poll);
+                      } catch (pollErr) {
+                        logger.error('Failed to parse poll closed message:', pollErr);
+                      }
+                    }
                     break;
                 }
               } catch (parseError) {
@@ -372,11 +416,33 @@ export function useChat(raceId: string, enabled: boolean): UseChatReturn {
     setReconnectTrigger(c => c + 1);
   }, []);
 
+  const voteInPoll = useCallback(async (pollId: string, optionId: string) => {
+    if (!pollId || !optionId) {
+      return;
+    }
+    setPollError(null);
+    setPollVoteLoading(true);
+    try {
+      await voteInChatPoll(raceId, pollId, optionId);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to submit vote';
+      setPollError(message);
+      throw err;
+    } finally {
+      setPollVoteLoading(false);
+    }
+  }, [raceId]);
+
   return {
     messages,
     sendMessage,
     isConnected,
     error,
-    reconnect
+    reconnect,
+    activePoll,
+    lastClosedPoll,
+    pollError,
+    voteInPoll,
+    pollVoteLoading,
   };
 }

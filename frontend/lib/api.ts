@@ -63,9 +63,8 @@ export async function getRace(id: string): Promise<Race> {
 export async function getRaceStream(id: string, suppressAuthErrorLog = false): Promise<StreamResponse> {
   try {
     return await fetchAPI<StreamResponse>(`/races/${id}/stream`);
-  } catch (error: any) {
-    // If this is an expected 401 error and we're suppressing logs, re-throw without logging
-    if (suppressAuthErrorLog && error?.status === 401) {
+  } catch (error) {
+    if (suppressAuthErrorLog && typeof error === 'object' && error !== null && 'status' in error && (error as { status?: number }).status === 401) {
       throw error;
     }
     throw error;
@@ -79,12 +78,64 @@ export interface ChatMessage {
   username: string;
   message: string;
   created_at: string;
+  role?: 'viewer' | 'mod' | 'vip' | 'subscriber';
+  badges?: string[];
+  special_emote?: boolean;
 }
 
 export interface ChatHistoryResponse {
   messages: ChatMessage[];
   limit: number;
   offset: number;
+}
+
+export interface ChatPollOption {
+  id: string;
+  label: string;
+  votes: number;
+}
+
+export interface ChatPoll {
+  id: string;
+  race_id: string;
+  question: string;
+  options: ChatPollOption[];
+  total_votes: number;
+  created_at: string;
+  closes_at?: string;
+  closed: boolean;
+}
+
+export interface CreateChatPollRequest {
+  question: string;
+  options: string[];
+  duration_seconds?: number;
+}
+
+export async function createChatPoll(raceId: string, payload: CreateChatPollRequest): Promise<ChatPoll> {
+  return fetchAuthenticatedAPI<ChatPoll>(`/races/${raceId}/chat/polls`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function closeChatPoll(raceId: string, pollId: string): Promise<ChatPoll> {
+  return fetchAuthenticatedAPI<ChatPoll>(`/races/${raceId}/chat/polls/${pollId}/close`, {
+    method: 'POST',
+  });
+}
+
+export async function voteInChatPoll(raceId: string, pollId: string, optionId: string): Promise<ChatPoll> {
+  return fetchAuthenticatedAPI<ChatPoll>(`/races/${raceId}/chat/polls/${pollId}/vote`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ option_id: optionId }),
+  });
 }
 
 export interface ChatStatsResponse {
@@ -125,6 +176,20 @@ export async function getLeaderboard(): Promise<LeaderboardEntry[]> {
 }
 
 // User Preferences Types and API
+export interface UIPreferences {
+  chat_animations: boolean;
+  reduced_motion: boolean;
+  button_pulse: boolean;
+  poll_animations: boolean;
+}
+
+export interface AudioPreferences {
+  button_clicks: boolean;
+  notification_sounds: boolean;
+  mention_pings: boolean;
+  master_volume: number;
+}
+
 export interface UserPreferences {
   id: string;
   user_id: string;
@@ -134,9 +199,25 @@ export interface UserPreferences {
   accent_color?: string;
   device_type?: 'tv' | 'desktop' | 'mobile' | 'tablet';
   notification_preferences: Record<string, boolean>;
+  ui_preferences: UIPreferences;
+  audio_preferences: AudioPreferences;
   onboarding_completed: boolean;
   created_at: string;
   updated_at: string;
+}
+
+export interface UpdateUIPreferencesRequest {
+  chat_animations?: boolean;
+  reduced_motion?: boolean;
+  button_pulse?: boolean;
+  poll_animations?: boolean;
+}
+
+export interface UpdateAudioPreferencesRequest {
+  button_clicks?: boolean;
+  notification_sounds?: boolean;
+  mention_pings?: boolean;
+  master_volume?: number;
 }
 
 export interface UpdatePreferencesRequest {
@@ -147,6 +228,8 @@ export interface UpdatePreferencesRequest {
   device_type?: 'tv' | 'desktop' | 'mobile' | 'tablet';
   notification_preferences?: Record<string, boolean>;
   onboarding_completed?: boolean;
+  ui_preferences?: UpdateUIPreferencesRequest;
+  audio_preferences?: UpdateAudioPreferencesRequest;
 }
 
 export interface UserFavorite {
@@ -186,12 +269,14 @@ export interface WatchHistoryResponse {
 /**
  * Fetches data from authenticated API endpoints
  */
+type FetchError = Error & { status?: number };
+
 async function fetchAuthenticatedAPI<T>(endpoint: string, options?: RequestInit): Promise<T> {
   const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
   if (!token) {
-    const error: any = new Error('Authentication required');
-    error.status = 401;
-    throw error;
+    const authError = new Error('Authentication required') as FetchError;
+    authError.status = 401;
+    throw authError;
   }
 
   return fetchAPI<T>(endpoint, {
@@ -206,9 +291,8 @@ async function fetchAuthenticatedAPI<T>(endpoint: string, options?: RequestInit)
 export async function getUserPreferences(): Promise<UserPreferences> {
   try {
     return await fetchAuthenticatedAPI<UserPreferences>('/users/me/preferences');
-  } catch (error: any) {
-    // If 404, return defaults (preferences don't exist yet)
-    if (error?.status === 404) {
+  } catch (error) {
+    if (typeof error === 'object' && error !== null && 'status' in error && (error as FetchError).status === 404) {
       return {
         id: '',
         user_id: '',
@@ -216,6 +300,18 @@ export async function getUserPreferences(): Promise<UserPreferences> {
         preferred_units: 'metric',
         theme: 'auto',
         notification_preferences: {},
+        ui_preferences: {
+          chat_animations: true,
+          reduced_motion: false,
+          button_pulse: true,
+          poll_animations: true,
+        },
+        audio_preferences: {
+          button_clicks: true,
+          notification_sounds: true,
+          mention_pings: true,
+          master_volume: 0.15,
+        },
         onboarding_completed: false,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -366,6 +462,55 @@ export interface XPProgress {
 
 export async function getUserXP(): Promise<XPProgress> {
   return fetchAuthenticatedAPI<XPProgress>('/users/me/xp');
+}
+
+export interface UserAchievement {
+  id: string;
+  slug: string;
+  title: string;
+  description?: string;
+  icon?: string;
+  points: number;
+  unlocked_at: string;
+  metadata?: Record<string, unknown>;
+}
+
+interface UserAchievementsResponse {
+  achievements: UserAchievement[];
+}
+
+export async function getUserAchievements(): Promise<UserAchievement[]> {
+  if (typeof window === 'undefined') {
+    return [];
+  }
+  const token = localStorage.getItem('auth_token');
+  if (!token) {
+    return [];
+  }
+
+  const response = await fetch(`${API_URL}/users/me/achievements`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (response.status === 404) {
+    return [];
+  }
+
+  if (response.status === 401) {
+    const authError = new Error('Authentication required') as FetchError;
+    authError.status = 401;
+    throw authError;
+  }
+
+  if (!response.ok) {
+    throw new Error(`Failed to load achievements (${response.status})`);
+  }
+
+  const data: UserAchievementsResponse = await response.json();
+  return data.achievements ?? [];
 }
 
 // Weekly stats types and API

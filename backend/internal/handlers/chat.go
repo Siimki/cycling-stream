@@ -19,13 +19,15 @@ import (
 )
 
 type ChatHandler struct {
-	chatRepo       *repository.ChatRepository
-	raceRepo       *repository.RaceRepository
-	streamRepo     *repository.StreamRepository
-	userRepo       *repository.UserRepository
-	hub            *chat.Hub
-	rateLimiter    *chat.RateLimiter
+	chatRepo        *repository.ChatRepository
+	raceRepo        *repository.RaceRepository
+	streamRepo      *repository.StreamRepository
+	userRepo        *repository.UserRepository
+	entitlementRepo *repository.EntitlementRepository
+	hub             *chat.Hub
+	rateLimiter     *chat.RateLimiter
 	missionTriggers *services.MissionTriggers
+	pollManager     *chat.PollManager
 }
 
 func NewChatHandler(
@@ -33,18 +35,22 @@ func NewChatHandler(
 	raceRepo *repository.RaceRepository,
 	streamRepo *repository.StreamRepository,
 	userRepo *repository.UserRepository,
+	entitlementRepo *repository.EntitlementRepository,
 	hub *chat.Hub,
 	rateLimiter *chat.RateLimiter,
 	missionTriggers *services.MissionTriggers,
+	pollManager *chat.PollManager,
 ) *ChatHandler {
 	return &ChatHandler{
 		chatRepo:        chatRepo,
 		raceRepo:        raceRepo,
 		streamRepo:      streamRepo,
 		userRepo:        userRepo,
+		entitlementRepo: entitlementRepo,
 		hub:             hub,
 		rateLimiter:     rateLimiter,
 		missionTriggers: missionTriggers,
+		pollManager:     pollManager,
 	}
 }
 
@@ -110,11 +116,13 @@ func (h *ChatHandler) HandleWebSocket(c *fiber.Ctx) error {
 		var username string
 		var userIDPtr *string
 
+		var currentUser *models.User
 		if userID != "" {
 			userIDPtr = &userID
 			// Get user to get username
 			user, err := h.userRepo.GetByID(userID)
 			if err == nil && user != nil {
+				currentUser = user
 				if user.Name != nil && *user.Name != "" {
 					username = *user.Name
 				} else {
@@ -132,7 +140,7 @@ func (h *ChatHandler) HandleWebSocket(c *fiber.Ctx) error {
 		messageHandler := func(client *chat.Client, msg *chat.WSMessage) {
 			// Handle send_message type
 			if msg.Type == string(chat.MessageTypeSendMessage) {
-				h.handleSendMessage(client, raceID, msg, userIDPtr, username)
+				h.handleSendMessage(client, raceID, msg, userIDPtr, username, currentUser)
 			}
 		}
 
@@ -170,7 +178,7 @@ func (h *ChatHandler) HandleWebSocket(c *fiber.Ctx) error {
 }
 
 // handleSendMessage processes a send_message request
-func (h *ChatHandler) handleSendMessage(client *chat.Client, raceID string, msg *chat.WSMessage, userID *string, username string) {
+func (h *ChatHandler) handleSendMessage(client *chat.Client, raceID string, msg *chat.WSMessage, userID *string, username string, user *models.User) {
 	// Anonymous users cannot send messages
 	if userID == nil {
 		errorMsg := chat.NewErrorWSMessage("Authentication required to send messages")
@@ -227,6 +235,8 @@ func (h *ChatHandler) handleSendMessage(client *chat.Client, raceID string, msg 
 		Message:  validatedMessage,
 	}
 
+	h.applyMessageMetadata(chatMsg, user, client != nil && client.IsAdmin())
+
 	// Save to database with retry logic for transient errors
 	var dbErr error
 	maxRetries := 3
@@ -256,13 +266,13 @@ func (h *ChatHandler) handleSendMessage(client *chat.Client, raceID string, msg 
 	if dbErr != nil {
 		// Log detailed error information for debugging
 		logger.WithFields(map[string]interface{}{
-			"error":        dbErr.Error(),
-			"race_id":      raceID,
-			"user_id":      userID,
-			"username":     username,
-			"message":      validatedMessage,
-			"message_id":   chatMsg.ID,
-			"retryable":    isRetryableDBError(dbErr),
+			"error":      dbErr.Error(),
+			"race_id":    raceID,
+			"user_id":    userID,
+			"username":   username,
+			"message":    validatedMessage,
+			"message_id": chatMsg.ID,
+			"retryable":  isRetryableDBError(dbErr),
 		}).Error("Failed to create chat message in database after retries")
 
 		// Send a generic error message to the client to avoid leaking internal details
@@ -336,6 +346,8 @@ func (h *ChatHandler) GetChatHistory(c *fiber.Ctx) error {
 		messages = []*models.ChatMessage{}
 	}
 
+	h.hydrateMessageMetadata(messages)
+
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
 		"messages": messages,
 		"limit":    limit,
@@ -365,6 +377,244 @@ func (h *ChatHandler) GetChatStats(c *fiber.Ctx) error {
 		"total_messages":         count,
 		"concurrent_connections": concurrentConnections,
 	})
+}
+
+func (h *ChatHandler) applyMessageMetadata(msg *models.ChatMessage, user *models.User, isAdmin bool) {
+	if msg == nil {
+		return
+	}
+
+	if msg.Badges == nil {
+		msg.Badges = []string{}
+	}
+
+	role, badges := h.resolveRoleAndBadges(user, isAdmin)
+	msg.Role = role
+	if len(msg.Badges) == 0 && len(badges) > 0 {
+		msg.Badges = badges
+	} else if len(badges) > 0 {
+		msg.Badges = dedupeStrings(append(msg.Badges, badges...))
+	}
+	msg.SpecialEmote = chat.IsSpecialEmoteMessage(msg.Message)
+}
+
+func (h *ChatHandler) hydrateMessageMetadata(messages []*models.ChatMessage) {
+	if len(messages) == 0 {
+		return
+	}
+
+	missing := make(map[string]struct{})
+	for _, msg := range messages {
+		if msg == nil || msg.UserID == nil || msg.Role != "" {
+			continue
+		}
+		missing[*msg.UserID] = struct{}{}
+	}
+
+	if len(missing) == 0 {
+		return
+	}
+
+	userIDs := make([]string, 0, len(missing))
+	for id := range missing {
+		userIDs = append(userIDs, id)
+	}
+
+	users, err := h.userRepo.GetByIDs(userIDs)
+	if err != nil {
+		logger.WithError(err).Warn("Failed to backfill chat metadata")
+		return
+	}
+
+	for _, msg := range messages {
+		if msg == nil || msg.UserID == nil || msg.Role != "" {
+			continue
+		}
+		h.applyMessageMetadata(msg, users[*msg.UserID], false)
+	}
+}
+
+func (h *ChatHandler) resolveRoleAndBadges(user *models.User, isAdmin bool) (string, []string) {
+	if isAdmin {
+		return "mod", []string{"mod"}
+	}
+
+	if user == nil {
+		return "viewer", []string{}
+	}
+
+	badges := make([]string, 0, 3)
+	if user.Level >= 15 {
+		badges = append(badges, "vip")
+	}
+
+	hasSubscription := false
+	if h.entitlementRepo != nil && user.ID != "" {
+		if ok, err := h.entitlementRepo.HasActiveSubscription(user.ID); err == nil && ok {
+			hasSubscription = true
+			badges = append(badges, "sub")
+		} else if err != nil {
+			logger.WithError(err).Warn("Failed to check subscription for chat role")
+		}
+	}
+
+	if !hasSubscription && user.Points >= 500 {
+		badges = append(badges, "sub")
+	}
+
+	if user.BestStreakWeeks >= 4 {
+		badges = append(badges, "og")
+	}
+
+	role := "viewer"
+	if containsString(badges, "vip") {
+		role = "vip"
+	} else if containsString(badges, "sub") {
+		role = "subscriber"
+	}
+
+	return role, dedupeStrings(badges)
+}
+
+func containsString(items []string, target string) bool {
+	for _, item := range items {
+		if item == target {
+			return true
+		}
+	}
+	return false
+}
+
+func dedupeStrings(items []string) []string {
+	if len(items) == 0 {
+		return items
+	}
+
+	seen := make(map[string]struct{}, len(items))
+	result := make([]string, 0, len(items))
+	for _, item := range items {
+		if _, ok := seen[item]; ok {
+			continue
+		}
+		seen[item] = struct{}{}
+		result = append(result, item)
+	}
+	return result
+}
+
+type createPollRequest struct {
+	Question        string   `json:"question"`
+	Options         []string `json:"options"`
+	DurationSeconds *int     `json:"duration_seconds,omitempty"`
+}
+
+type votePollRequest struct {
+	OptionID string `json:"option_id"`
+}
+
+func (h *ChatHandler) CreatePoll(c *fiber.Ctx) error {
+	if h.pollManager == nil {
+		return c.Status(fiber.StatusServiceUnavailable).JSON(APIError{Error: "Poll manager unavailable"})
+	}
+	raceID, ok := requireParam(c, "id", "Race ID is required")
+	if !ok {
+		return nil
+	}
+
+	var req createPollRequest
+	if !parseBody(c, &req) {
+		return nil
+	}
+
+	if strings.TrimSpace(req.Question) == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(APIError{Error: "Question is required"})
+	}
+
+	duration := time.Duration(0)
+	if req.DurationSeconds != nil && *req.DurationSeconds > 0 {
+		duration = time.Duration(*req.DurationSeconds) * time.Second
+	}
+
+	poll, err := h.pollManager.CreatePoll(raceID, req.Question, req.Options, duration)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(APIError{Error: err.Error()})
+	}
+
+	if pollBytes, err := json.Marshal(chat.NewPollAnnouncementMessage(poll)); err == nil {
+		h.hub.BroadcastToRoom(raceID, pollBytes)
+	}
+
+	return c.Status(fiber.StatusCreated).JSON(poll)
+}
+
+func (h *ChatHandler) CastPollVote(c *fiber.Ctx) error {
+	if h.pollManager == nil {
+		return c.Status(fiber.StatusServiceUnavailable).JSON(APIError{Error: "Poll manager unavailable"})
+	}
+	raceID, ok := requireParam(c, "id", "Race ID is required")
+	if !ok {
+		return nil
+	}
+
+	pollID, ok := requireParam(c, "pollId", "Poll ID is required")
+	if !ok {
+		return nil
+	}
+
+	userID, ok := requireUserID(c, "Authentication required")
+	if !ok {
+		return nil
+	}
+
+	var req votePollRequest
+	if !parseBody(c, &req) {
+		return nil
+	}
+	if req.OptionID == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(APIError{Error: "option_id is required"})
+	}
+
+	poll, exists := h.pollManager.GetPoll(pollID)
+	if !exists || poll.RaceID != raceID {
+		return c.Status(fiber.StatusNotFound).JSON(APIError{Error: "Poll not found"})
+	}
+
+	updated, err := h.pollManager.Vote(pollID, userID, req.OptionID)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(APIError{Error: err.Error()})
+	}
+
+	if pollBytes, err := json.Marshal(chat.NewPollUpdateMessage(updated)); err == nil {
+		h.hub.BroadcastToRoom(raceID, pollBytes)
+	}
+
+	return c.Status(fiber.StatusOK).JSON(updated)
+}
+
+func (h *ChatHandler) ClosePoll(c *fiber.Ctx) error {
+	if h.pollManager == nil {
+		return c.Status(fiber.StatusServiceUnavailable).JSON(APIError{Error: "Poll manager unavailable"})
+	}
+	raceID, ok := requireParam(c, "id", "Race ID is required")
+	if !ok {
+		return nil
+	}
+
+	pollID, ok := requireParam(c, "pollId", "Poll ID is required")
+	if !ok {
+		return nil
+	}
+
+	poll, err := h.pollManager.ClosePoll(pollID)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(APIError{Error: err.Error()})
+	}
+
+	if pollBytes, err := json.Marshal(chat.NewPollClosedMessage(poll)); err == nil {
+		h.hub.BroadcastToRoom(raceID, pollBytes)
+	}
+
+	return c.Status(fiber.StatusOK).JSON(poll)
 }
 
 // isRetryableDBError checks if a database error is retryable (transient)
