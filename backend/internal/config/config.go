@@ -22,6 +22,7 @@ type Config struct {
 	StripeKey           string
 	StripeWebhookSecret string
 	FrontendURL         string
+	XP                  *XPConfig
 }
 
 func Load() (*Config, error) {
@@ -45,6 +46,7 @@ func Load() (*Config, error) {
 		StripeKey:           getEnv("STRIPE_SECRET_KEY", ""),
 		StripeWebhookSecret: getEnv("STRIPE_WEBHOOK_SECRET", ""),
 		FrontendURL:         getEnv("FRONTEND_URL", "http://localhost:3000"),
+		XP:                  LoadXPConfig(),
 	}
 
 	// Validate configuration

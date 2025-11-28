@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 
+	"github.com/cyclingstream/backend/internal/config"
 	"github.com/cyclingstream/backend/internal/models"
 	"github.com/google/uuid"
 )
@@ -17,7 +18,7 @@ func NewUserRepository(db *sql.DB) *UserRepository {
 }
 
 func (r *UserRepository) GetByEmail(email string) (*models.User, error) {
-	query := `SELECT id, email, password_hash, name, bio, points, created_at, updated_at FROM users WHERE email = $1`
+	query := `SELECT id, email, password_hash, name, bio, points, xp_total, level, best_streak_weeks, created_at, updated_at FROM users WHERE email = $1`
 
 	var user models.User
 	err := r.db.QueryRow(query, email).Scan(
@@ -27,6 +28,9 @@ func (r *UserRepository) GetByEmail(email string) (*models.User, error) {
 		&user.Name,
 		&user.Bio,
 		&user.Points,
+		&user.XPTotal,
+		&user.Level,
+		&user.BestStreakWeeks,
 		&user.CreatedAt,
 		&user.UpdatedAt,
 	)
@@ -42,7 +46,7 @@ func (r *UserRepository) GetByEmail(email string) (*models.User, error) {
 }
 
 func (r *UserRepository) GetByID(id string) (*models.User, error) {
-	query := `SELECT id, email, password_hash, name, bio, points, created_at, updated_at FROM users WHERE id = $1`
+	query := `SELECT id, email, password_hash, name, bio, points, xp_total, level, best_streak_weeks, created_at, updated_at FROM users WHERE id = $1`
 
 	var user models.User
 	err := r.db.QueryRow(query, id).Scan(
@@ -52,6 +56,9 @@ func (r *UserRepository) GetByID(id string) (*models.User, error) {
 		&user.Name,
 		&user.Bio,
 		&user.Points,
+		&user.XPTotal,
+		&user.Level,
+		&user.BestStreakWeeks,
 		&user.CreatedAt,
 		&user.UpdatedAt,
 	)
@@ -67,7 +74,7 @@ func (r *UserRepository) GetByID(id string) (*models.User, error) {
 }
 
 func (r *UserRepository) GetPublicByID(id string) (*models.PublicUser, error) {
-	query := `SELECT id, name, bio, points, created_at FROM users WHERE id = $1`
+	query := `SELECT id, name, bio, points, xp_total, level, best_streak_weeks, created_at FROM users WHERE id = $1`
 
 	var user models.PublicUser
 	err := r.db.QueryRow(query, id).Scan(
@@ -75,6 +82,9 @@ func (r *UserRepository) GetPublicByID(id string) (*models.PublicUser, error) {
 		&user.Name,
 		&user.Bio,
 		&user.Points,
+		&user.XPTotal,
+		&user.Level,
+		&user.BestStreakWeeks,
 		&user.CreatedAt,
 	)
 
@@ -90,9 +100,19 @@ func (r *UserRepository) GetPublicByID(id string) (*models.PublicUser, error) {
 
 func (r *UserRepository) Create(user *models.User) error {
 	user.ID = uuid.New().String()
+	// Initialize XP/Level fields if not set
+	if user.XPTotal == 0 {
+		user.XPTotal = 0
+	}
+	if user.Level == 0 {
+		user.Level = 1
+	}
+	if user.BestStreakWeeks == 0 {
+		user.BestStreakWeeks = 0
+	}
 	query := `
-		INSERT INTO users (id, email, password_hash, name, bio, points)
-		VALUES ($1, $2, $3, $4, $5, $6)
+		INSERT INTO users (id, email, password_hash, name, bio, points, xp_total, level, best_streak_weeks)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 		RETURNING created_at, updated_at
 	`
 
@@ -104,6 +124,9 @@ func (r *UserRepository) Create(user *models.User) error {
 		user.Name,
 		user.Bio,
 		user.Points,
+		user.XPTotal,
+		user.Level,
+		user.BestStreakWeeks,
 	).Scan(&user.CreatedAt, &user.UpdatedAt)
 
 	if err != nil {
@@ -214,4 +237,117 @@ func (r *UserRepository) GetLeaderboard() ([]models.LeaderboardEntry, error) {
 	}
 
 	return entries, nil
+}
+
+// AddXP increments a user's XP by the given amount and updates the level if needed.
+// This method only updates XP; level calculation should be done by the service layer.
+func (r *UserRepository) AddXP(userID string, xp int) error {
+	if xp == 0 {
+		return nil
+	}
+
+	query := `
+		UPDATE users
+		SET xp_total = xp_total + $1, updated_at = CURRENT_TIMESTAMP
+		WHERE id = $2
+	`
+
+	result, err := r.db.Exec(query, xp, userID)
+	if err != nil {
+		return fmt.Errorf("failed to update user XP: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to check rows affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("user not found")
+	}
+
+	return nil
+}
+
+// UpdateLevel updates a user's level.
+func (r *UserRepository) UpdateLevel(userID string, level int) error {
+	query := `
+		UPDATE users
+		SET level = $1, updated_at = CURRENT_TIMESTAMP
+		WHERE id = $2
+	`
+
+	result, err := r.db.Exec(query, level, userID)
+	if err != nil {
+		return fmt.Errorf("failed to update user level: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to check rows affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("user not found")
+	}
+
+	return nil
+}
+
+// GetLevelFromXP calculates the level from total XP using the provided config.
+// Level 1: 0 to (BaseXP - 1) XP
+// Level N (N > 1): Requires BaseXP + (N-2) * IncrementPerLevel XP
+func GetLevelFromXP(xp int, cfg *config.LevelingConfig) int {
+	if xp < cfg.BaseXP {
+		return 1
+	}
+	// Solve: xp >= BaseXP + (level - 2) * IncrementPerLevel
+	// xp - BaseXP >= (level - 2) * IncrementPerLevel
+	// (xp - BaseXP) / IncrementPerLevel >= level - 2
+	// level <= (xp - BaseXP) / IncrementPerLevel + 2
+	// But we need to handle integer division correctly
+	level := 1 + ((xp - cfg.BaseXP + cfg.IncrementPerLevel) / cfg.IncrementPerLevel)
+	return level
+}
+
+// GetXPForLevel returns the XP needed to REACH level N (the minimum XP for that level).
+// Level 1: returns 0
+// Level N (N > 1): returns BaseXP + (N-2) * IncrementPerLevel
+func GetXPForLevel(level int, cfg *config.LevelingConfig) int {
+	if level <= 1 {
+		return 0
+	}
+	// XP needed to reach level N = BaseXP + (N-2) * IncrementPerLevel
+	return cfg.BaseXP + (level-2)*cfg.IncrementPerLevel
+}
+
+// GetXPForNextLevel returns the XP needed to reach the NEXT level (level N+1) from the current level N.
+// This is the same as GetXPForLevel(level+1, cfg)
+func GetXPForNextLevel(level int, cfg *config.LevelingConfig) int {
+	return GetXPForLevel(level+1, cfg)
+}
+
+// UpdateBestStreak updates the best streak weeks for a user
+func (r *UserRepository) UpdateBestStreak(userID string, bestStreak int) error {
+	query := `
+		UPDATE users
+		SET best_streak_weeks = $1, updated_at = CURRENT_TIMESTAMP
+		WHERE id = $2
+	`
+
+	result, err := r.db.Exec(query, bestStreak, userID)
+	if err != nil {
+		return fmt.Errorf("failed to update best streak: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to check rows affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("user not found")
+	}
+
+	return nil
 }

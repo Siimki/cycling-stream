@@ -52,6 +52,16 @@ func SetupRoutes(app *fiber.App, db *database.DB, cfg *config.Config, hub *chat.
 	userFavRepo := repository.NewUserFavoriteRepository(db.DB)
 	watchHistoryRepo := repository.NewWatchHistoryRepository(db.DB)
 	recommendationService := services.NewRecommendationService(raceRepo, watchHistoryRepo, userFavRepo, streamRepo)
+	missionRepo := repository.NewMissionRepository(db.DB)
+	userMissionRepo := repository.NewUserMissionRepository(db.DB)
+	xpService := services.NewXPService(userRepo, &cfg.XP.Leveling)
+	missionService := services.NewMissionService(missionRepo, userMissionRepo, userRepo, xpService)
+	weeklyRepo := repository.NewWeeklyRepository(db.DB)
+	streakRepo := repository.NewStreakRepository(db.DB)
+	weeklyService := services.NewWeeklyService(weeklyRepo, streakRepo, userRepo, xpService, cfg.XP)
+	missionTriggers := services.NewMissionTriggers(missionService, xpService, weeklyService, cfg.XP)
+	predictionRepo := repository.NewPredictionRepository(db.DB)
+	predictionService := services.NewPredictionService(predictionRepo, userRepo, xpService, missionTriggers, cfg.XP)
 
 	// Initialize handlers
 	healthHandler := handlers.NewHealthHandler(db)
@@ -66,7 +76,7 @@ func SetupRoutes(app *fiber.App, db *database.DB, cfg *config.Config, hub *chat.
 		cfg.StripeKey,
 		cfg.StripeWebhookSecret,
 	)
-	watchHandler := handlers.NewWatchHandler(watchSessionRepo, userRepo)
+	watchHandler := handlers.NewWatchHandler(watchSessionRepo, streamRepo, userRepo, missionTriggers)
 	viewerHandler := handlers.NewViewerHandler(viewerSessionRepo)
 	analyticsHandler := handlers.NewAnalyticsHandler(
 		raceRepo,
@@ -75,12 +85,16 @@ func SetupRoutes(app *fiber.App, db *database.DB, cfg *config.Config, hub *chat.
 		revenueRepo,
 	)
 	costHandler := handlers.NewCostHandler(costRepo, raceRepo)
-	chatHandler := handlers.NewChatHandler(chatRepo, raceRepo, streamRepo, userRepo, hub, rateLimiter)
+	chatHandler := handlers.NewChatHandler(chatRepo, raceRepo, streamRepo, userRepo, hub, rateLimiter, missionTriggers)
 	userHandler := handlers.NewUserHandler(userRepo, watchSessionRepo)
 	userPrefsHandler := handlers.NewUserPreferencesHandler(userPrefsRepo)
 	userFavHandler := handlers.NewUserFavoritesHandler(userFavRepo)
 	watchHistoryHandler := handlers.NewWatchHistoryHandler(watchHistoryRepo)
 	recommendationsHandler := handlers.NewRecommendationsHandler(recommendationService)
+	missionsHandler := handlers.NewMissionsHandler(missionService)
+	xpHandler := handlers.NewXPHandler(userRepo, xpService)
+	weeklyHandler := handlers.NewWeeklyHandler(weeklyService)
+	predictionsHandler := handlers.NewPredictionsHandler(predictionService)
 
 	// Middleware instances
 	authMiddleware := middleware.AuthMiddleware(cfg.JWTSecret)
@@ -90,17 +104,18 @@ func SetupRoutes(app *fiber.App, db *database.DB, cfg *config.Config, hub *chat.
 	csrfProtection := middleware.CSRFProtection(cfg.JWTSecret)
 
 	// Setup route groups
-	setupPublicRoutes(app, healthHandler, raceHandler, userHandler)
+	setupPublicRoutes(app, healthHandler, raceHandler, userHandler, missionsHandler)
 	setupAuthRoutes(app, authHandler)
 	setupViewerRoutes(app, viewerHandler, optionalUserAuthMiddleware)
 	setupStreamRoutes(app, raceHandler, streamHandler, optionalUserAuthMiddleware)
 	setupChatRoutes(app, chatHandler, chatAuthMiddleware)
-	setupUserRoutes(app, authHandler, paymentHandler, watchHandler, userPrefsHandler, userFavHandler, watchHistoryHandler, recommendationsHandler, userAuthMiddleware, csrfProtection)
+	setupUserRoutes(app, authHandler, paymentHandler, watchHandler, userPrefsHandler, userFavHandler, watchHistoryHandler, recommendationsHandler, missionsHandler, xpHandler, weeklyHandler, userAuthMiddleware, csrfProtection)
+	setupPredictionRoutes(app, predictionsHandler, optionalUserAuthMiddleware, userAuthMiddleware, csrfProtection)
 	setupWebhookRoutes(app, paymentHandler)
 	setupAdminRoutes(app, adminHandler, analyticsHandler, costHandler, authMiddleware, csrfProtection)
 }
 
-func setupPublicRoutes(app *fiber.App, healthHandler *handlers.HealthHandler, raceHandler *handlers.RaceHandler, userHandler *handlers.UserHandler) {
+func setupPublicRoutes(app *fiber.App, healthHandler *handlers.HealthHandler, raceHandler *handlers.RaceHandler, userHandler *handlers.UserHandler, missionsHandler *handlers.MissionsHandler) {
 	// Public routes with lenient rate limiting
 	public := app.Group("", middleware.LenientRateLimiter())
 	public.Get("/health", healthHandler.GetHealth)
@@ -112,6 +127,8 @@ func setupPublicRoutes(app *fiber.App, healthHandler *handlers.HealthHandler, ra
 	// Fiber matches first, so specific routes should be registered before parameterized routes if they conflict.
 	// /races/:id is quite generic, so ensuring it doesn't conflict is key.
 	public.Get("/races/:id", raceHandler.GetRaceByID)
+	// Public missions endpoint
+	public.Get("/missions/active", missionsHandler.GetActiveMissions)
 }
 
 func setupAuthRoutes(app *fiber.App, authHandler *handlers.AuthHandler) {
@@ -147,7 +164,7 @@ func setupChatRoutes(app *fiber.App, chatHandler *handlers.ChatHandler, chatAuth
 	chatRoutes.Get("/races/:id/chat/stats", chatHandler.GetChatStats)
 }
 
-func setupUserRoutes(app *fiber.App, authHandler *handlers.AuthHandler, paymentHandler *handlers.PaymentHandler, watchHandler *handlers.WatchHandler, userPrefsHandler *handlers.UserPreferencesHandler, userFavHandler *handlers.UserFavoritesHandler, watchHistoryHandler *handlers.WatchHistoryHandler, recommendationsHandler *handlers.RecommendationsHandler, userAuth fiber.Handler, csrf fiber.Handler) {
+func setupUserRoutes(app *fiber.App, authHandler *handlers.AuthHandler, paymentHandler *handlers.PaymentHandler, watchHandler *handlers.WatchHandler, userPrefsHandler *handlers.UserPreferencesHandler, userFavHandler *handlers.UserFavoritesHandler, watchHistoryHandler *handlers.WatchHistoryHandler, recommendationsHandler *handlers.RecommendationsHandler, missionsHandler *handlers.MissionsHandler, xpHandler *handlers.XPHandler, weeklyHandler *handlers.WeeklyHandler, userAuth fiber.Handler, csrf fiber.Handler) {
 	// Protected user routes with standard rate limiting and CSRF protection
 	user := app.Group("/users", userAuth, middleware.StandardRateLimiter(), csrf)
 	user.Get("/me", authHandler.GetProfile)
@@ -177,6 +194,18 @@ func setupUserRoutes(app *fiber.App, authHandler *handlers.AuthHandler, paymentH
 	user.Get("/me/recommendations/continue-watching", recommendationsHandler.GetContinueWatching)
 	user.Get("/me/recommendations/upcoming", recommendationsHandler.GetUpcoming)
 	user.Get("/me/recommendations/replays", recommendationsHandler.GetReplays)
+	
+	// Missions routes
+	user.Get("/me/missions", missionsHandler.GetUserMissions)
+	user.Get("/me/missions/career", missionsHandler.GetCareerMissions)
+	user.Get("/me/missions/weekly", missionsHandler.GetWeeklyMissions)
+	user.Post("/me/missions/:missionId/claim", missionsHandler.ClaimMissionReward)
+	
+	// XP routes
+	user.Get("/me/xp", xpHandler.GetUserXPProgress)
+	
+	// Weekly routes
+	user.Get("/me/weekly", weeklyHandler.GetWeeklyProgress)
 }
 
 func setupWebhookRoutes(app *fiber.App, paymentHandler *handlers.PaymentHandler) {
@@ -184,6 +213,20 @@ func setupWebhookRoutes(app *fiber.App, paymentHandler *handlers.PaymentHandler)
 	// CSRF is automatically skipped for webhooks
 	webhook := app.Group("/webhooks", middleware.StrictRateLimiter())
 	webhook.Post("/stripe", paymentHandler.HandleWebhook)
+}
+
+func setupPredictionRoutes(app *fiber.App, predictionsHandler *handlers.PredictionsHandler, optionalAuth fiber.Handler, userAuth fiber.Handler, csrf fiber.Handler) {
+	// Prediction routes - public for markets, protected for bets
+	predictions := app.Group("", middleware.LenientRateLimiter())
+	predictions.Get("/races/:id/predictions", optionalAuth, predictionsHandler.GetRacePredictions)
+	
+	// Protected bet routes - placed at race level (before /races/:id route to avoid conflicts)
+	betRoutes := app.Group("", userAuth, middleware.StandardRateLimiter(), csrf)
+	betRoutes.Post("/races/:id/predictions/:marketId/bet", predictionsHandler.PlaceBet)
+	
+	// User predictions route (in /users group)
+	userPredictions := app.Group("/users", userAuth, middleware.StandardRateLimiter(), csrf)
+	userPredictions.Get("/me/predictions", predictionsHandler.GetUserPredictions)
 }
 
 func setupAdminRoutes(app *fiber.App, adminHandler *handlers.AdminHandler, analyticsHandler *handlers.AnalyticsHandler, costHandler *handlers.CostHandler, adminAuth fiber.Handler, csrf fiber.Handler) {
