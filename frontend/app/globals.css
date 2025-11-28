@@ -280,6 +280,57 @@
     background-size: 200% 100%;
   }
 
+  .motion-slide-in-right {
+    animation: motion-slide-in-right var(--motion-duration-fast) var(--motion-ease-sharp) both;
+  }
+
+  .motion-slide-in-left {
+    animation: motion-slide-in-left var(--motion-duration-fast) var(--motion-ease-sharp) both;
+  }
+
+  .motion-pop-in {
+    animation: motion-pop-in var(--motion-duration-fast) var(--motion-ease-spring) both;
+  }
+
+  .motion-flip-up {
+    perspective: 800px;
+    animation: motion-flip-up var(--motion-duration-base) var(--motion-ease-spring) both;
+  }
+
+  .motion-overlay-fade {
+    animation: motion-overlay-fade var(--motion-duration-slow) var(--motion-ease-linear) both;
+  }
+
+  .motion-sweep-line {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .motion-sweep-line::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(120deg, transparent, rgba(255, 255, 255, 0.25), transparent);
+    transform: translate3d(-120%, 0, 0);
+    animation: motion-sweep 2s linear infinite;
+    pointer-events: none;
+  }
+
+  .motion-glow-ambient {
+    position: relative;
+  }
+
+  .motion-glow-ambient::before {
+    content: "";
+    position: absolute;
+    inset: -20%;
+    background: radial-gradient(circle, rgba(126, 255, 203, 0.35), transparent 70%);
+    z-index: -1;
+    filter: blur(30px);
+    opacity: 0;
+    animation: motion-glow-fade var(--motion-duration-pulse) var(--motion-ease-spring) forwards;
+  }
+
 .button-motion {
   transition:
     transform var(--motion-duration-fast) var(--motion-ease-sharp),
@@ -614,6 +665,88 @@
   }
   100% {
     background-position: -200% 0;
+  }
+}
+
+@keyframes motion-slide-in-right {
+  0% {
+    opacity: 0;
+    transform: translate3d(-20px, 0, 0);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes motion-slide-in-left {
+  0% {
+    opacity: 0;
+    transform: translate3d(20px, 0, 0);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes motion-pop-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(1.02);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes motion-flip-up {
+  0% {
+    opacity: 0;
+    transform: rotateX(-30deg);
+  }
+  100% {
+    opacity: 1;
+    transform: rotateX(0deg);
+  }
+}
+
+@keyframes motion-sweep {
+  0% {
+    transform: translate3d(-120%, 0, 0);
+  }
+  100% {
+    transform: translate3d(120%, 0, 0);
+  }
+}
+
+@keyframes motion-overlay-fade {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 12px, 0);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes motion-glow-fade {
+  0% {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  40% {
+    opacity: 0.6;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.2);
   }
 }
 
