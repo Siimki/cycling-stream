@@ -63,8 +63,8 @@ export default function UserStats({ compact = false }: UserStatsProps) {
 
   if (loading) {
     return (
-      <div className="flex items-center gap-2 text-sm text-gray-500">
-        <div className="h-4 w-16 animate-pulse bg-gray-200 rounded"></div>
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <div className="h-4 w-16 animate-pulse bg-muted rounded"></div>
       </div>
     );
   }
@@ -83,27 +83,27 @@ export default function UserStats({ compact = false }: UserStatsProps) {
     return (
       <div className="flex items-center gap-3 text-sm">
         {/* Level Badge */}
-        <div className="flex items-center gap-1.5 px-2 py-1 bg-blue-100 dark:bg-blue-900 rounded-md">
-          <span className="font-semibold text-blue-700 dark:text-blue-300">Lv.{xpData.level}</span>
+        <div className="flex items-center gap-1.5 px-2 py-1 bg-primary/20 rounded-md">
+          <span className="font-semibold text-primary">Lv.{xpData.level}</span>
         </div>
 
         {/* XP Bar */}
         <div className="flex items-center gap-2 min-w-[120px]">
-          <div className="flex-1 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+          <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
             <div
-              className="h-full bg-blue-500 transition-all duration-300"
+              className="h-full bg-success transition-all duration-300"
               style={{ width: `${Math.min(progressPercent, 100)}%` }}
             />
           </div>
-          <span className="text-xs text-gray-600 dark:text-gray-400 whitespace-nowrap">
+          <span className="text-xs text-muted-foreground whitespace-nowrap">
             {xpData.progress_in_current_level}/{xpData.xp_for_next_level}
           </span>
         </div>
 
         {/* Points */}
         {user && (
-          <div className="flex items-center gap-1 px-2 py-1 bg-green-100 dark:bg-green-900 rounded-md">
-            <span className="text-green-700 dark:text-green-300 font-medium">
+          <div className="flex items-center gap-1 px-2 py-1 bg-primary/20 rounded-md">
+            <span className="text-primary font-medium">
               {user.points || 0} pts
             </span>
           </div>
@@ -111,9 +111,9 @@ export default function UserStats({ compact = false }: UserStatsProps) {
 
         {/* Streak */}
         {weeklyData && weeklyData.current_streak_weeks > 0 && (
-          <div className="flex items-center gap-1 px-2 py-1 bg-orange-100 dark:bg-orange-900 rounded-md">
-            <span className="text-orange-600 dark:text-orange-400">🔥</span>
-            <span className="text-orange-700 dark:text-orange-300 font-medium">
+          <div className="flex items-center gap-1 px-2 py-1 bg-warning/20 rounded-md">
+            <span className="text-warning">🔥</span>
+            <span className="text-warning font-medium">
               {weeklyData.current_streak_weeks}w
             </span>
           </div>
@@ -126,21 +126,21 @@ export default function UserStats({ compact = false }: UserStatsProps) {
   return (
     <div className="space-y-4">
       {/* Level and XP */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow">
+      <div className="bg-card/80 backdrop-blur-sm border border-border/50 rounded-lg p-4">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-lg font-semibold">Level {xpData.level}</h3>
-          <div className="text-sm text-gray-600 dark:text-gray-400">
+          <h3 className="text-lg font-semibold text-foreground/95">Level {xpData.level}</h3>
+          <div className="text-sm text-muted-foreground">
             {xpData.xp_total} XP
           </div>
         </div>
         <div className="space-y-1">
-          <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400">
+          <div className="flex justify-between text-sm text-muted-foreground">
             <span>Progress to Level {xpData.level + 1}</span>
             <span>{xpData.progress_in_current_level} / {xpData.xp_for_next_level} XP</span>
           </div>
-          <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+          <div className="h-3 bg-muted rounded-full overflow-hidden">
             <div
-              className="h-full bg-blue-500 transition-all duration-300"
+              className="h-full bg-success transition-all duration-300"
               style={{ width: `${Math.min(progressPercent, 100)}%` }}
             />
           </div>
@@ -149,40 +149,40 @@ export default function UserStats({ compact = false }: UserStatsProps) {
 
       {/* Weekly Goal */}
       {weeklyData && (
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow">
-          <h3 className="text-lg font-semibold mb-3">This Week</h3>
+        <div className="bg-card/80 backdrop-blur-sm border border-border/50 rounded-lg p-4">
+          <h3 className="text-lg font-semibold text-foreground/95 mb-3">This Week</h3>
           <div className="space-y-3">
             <div>
               <div className="flex justify-between text-sm mb-1">
-                <span className="text-gray-600 dark:text-gray-400">Watch Time</span>
-                <span className="font-medium">{weeklyData.watch_minutes} / 30 min</span>
+                <span className="text-muted-foreground">Watch Time</span>
+                <span className="font-medium text-foreground">{weeklyData.watch_minutes} / 30 min</span>
               </div>
-              <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+              <div className="h-2 bg-muted rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-blue-500"
+                  className="h-full bg-success"
                   style={{ width: `${Math.min((weeklyData.watch_minutes / 30) * 100, 100)}%` }}
                 />
               </div>
             </div>
             <div>
               <div className="flex justify-between text-sm mb-1">
-                <span className="text-gray-600 dark:text-gray-400">Chat Messages</span>
-                <span className="font-medium">{weeklyData.chat_messages} / 3</span>
+                <span className="text-muted-foreground">Chat Messages</span>
+                <span className="font-medium text-foreground">{weeklyData.chat_messages} / 3</span>
               </div>
-              <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+              <div className="h-2 bg-muted rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-green-500"
+                  className="h-full bg-success"
                   style={{ width: `${Math.min((weeklyData.chat_messages / 3) * 100, 100)}%` }}
                 />
               </div>
             </div>
             {weeklyData.weekly_goal_completed && (
-              <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
+              <div className="pt-2 border-t border-border/50">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-green-600 dark:text-green-400">
+                  <span className="text-sm font-medium text-success">
                     ✓ Weekly Goal Completed!
                   </span>
-                  <div className="text-xs text-gray-500">
+                  <div className="text-xs text-muted-foreground">
                     +{weeklyData.reward_xp} XP, +{weeklyData.reward_points} pts
                   </div>
                 </div>
@@ -194,20 +194,20 @@ export default function UserStats({ compact = false }: UserStatsProps) {
 
       {/* Streak */}
       {weeklyData && (
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow">
-          <h3 className="text-lg font-semibold mb-2">Streak</h3>
+        <div className="bg-card/80 backdrop-blur-sm border border-border/50 rounded-lg p-4">
+          <h3 className="text-lg font-semibold text-foreground/95 mb-2">Streak</h3>
           <div className="flex items-center gap-4">
             <div>
-              <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
+              <div className="text-2xl font-bold text-warning">
                 🔥 {weeklyData.current_streak_weeks}
               </div>
-              <div className="text-sm text-gray-600 dark:text-gray-400">Current Streak</div>
+              <div className="text-sm text-muted-foreground">Current Streak</div>
             </div>
             <div>
-              <div className="text-2xl font-bold text-gray-700 dark:text-gray-300">
+              <div className="text-2xl font-bold text-foreground">
                 {weeklyData.best_streak_weeks}
               </div>
-              <div className="text-sm text-gray-600 dark:text-gray-400">Best Streak</div>
+              <div className="text-sm text-muted-foreground">Best Streak</div>
             </div>
           </div>
         </div>
