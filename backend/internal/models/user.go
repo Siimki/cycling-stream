@@ -34,6 +34,8 @@ type LeaderboardEntry struct {
 	ID                string  `json:"id"`
 	Name              *string `json:"name,omitempty"`
 	Points            int     `json:"points"`
+	XPTotal           int     `json:"xp_total"`
+	Level             int     `json:"level"`
 	TotalWatchMinutes int     `json:"total_watch_minutes"`
 }
 

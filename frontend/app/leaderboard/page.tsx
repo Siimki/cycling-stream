@@ -6,7 +6,7 @@ import { Navigation } from '@/components/layout/Navigation';
 import Footer from '@/components/layout/Footer';
 import { getLeaderboard, LeaderboardEntry } from '@/lib/api';
 import ErrorMessage from '@/components/ErrorMessage';
-import { Trophy, Clock, Award, User } from 'lucide-react';
+import { Trophy, Clock, Award, User, Star, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 type SortBy = 'points' | 'time';
@@ -145,6 +145,8 @@ export default function LeaderboardPage() {
                     <th className="text-left py-3 px-4 text-sm font-semibold text-muted-foreground">Rank</th>
                     <th className="text-left py-3 px-4 text-sm font-semibold text-muted-foreground">User</th>
                     <th className="text-left py-3 px-4 text-sm font-semibold text-muted-foreground">Points</th>
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-muted-foreground">XP</th>
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-muted-foreground">Level</th>
                     <th className="text-left py-3 px-4 text-sm font-semibold text-muted-foreground">Time Watched</th>
                   </tr>
                 </thead>
@@ -192,6 +194,22 @@ export default function LeaderboardPage() {
                             <Award className="w-4 h-4 text-muted-foreground" />
                             <span className="font-semibold text-foreground/95">
                               {entry.points.toLocaleString()}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="py-4 px-4 text-left">
+                          <div className="flex items-center gap-1">
+                            <Star className="w-4 h-4 text-muted-foreground" />
+                            <span className="font-semibold text-foreground/95">
+                              {(entry.xp_total ?? 0).toLocaleString()}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="py-4 px-4 text-left">
+                          <div className="flex items-center gap-1">
+                            <TrendingUp className="w-4 h-4 text-muted-foreground" />
+                            <span className="font-semibold text-foreground/95">
+                              Level {entry.level ?? 1}
                             </span>
                           </div>
                         </td>

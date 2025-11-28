@@ -256,10 +256,12 @@ func (r *UserRepository) GetLeaderboard() ([]models.LeaderboardEntry, error) {
 			u.id,
 			u.name,
 			u.points,
+			COALESCE(u.xp_total, 0) as xp_total,
+			COALESCE(u.level, 1) as level,
 			COALESCE(SUM(ws.duration_seconds) / 60, 0)::int as total_watch_minutes
 		FROM users u
 		LEFT JOIN watch_sessions ws ON u.id = ws.user_id AND ws.duration_seconds IS NOT NULL
-		GROUP BY u.id, u.name, u.points
+		GROUP BY u.id, u.name, u.points, u.xp_total, u.level
 		ORDER BY u.points DESC, total_watch_minutes DESC
 	`
 
@@ -278,6 +280,8 @@ func (r *UserRepository) GetLeaderboard() ([]models.LeaderboardEntry, error) {
 			&entry.ID,
 			&name,
 			&entry.Points,
+			&entry.XPTotal,
+			&entry.Level,
 			&entry.TotalWatchMinutes,
 		)
 		if err != nil {

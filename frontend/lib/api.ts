@@ -168,6 +168,8 @@ export interface LeaderboardEntry {
   id: string;
   name?: string;
   points: number;
+  xp_total: number;
+  level: number;
   total_watch_minutes: number;
 }
 
@@ -292,7 +294,10 @@ export async function getUserPreferences(): Promise<UserPreferences> {
   try {
     return await fetchAuthenticatedAPI<UserPreferences>('/users/me/preferences');
   } catch (error) {
-    if (typeof error === 'object' && error !== null && 'status' in error && (error as FetchError).status === 404) {
+    const errorStatus = (error as FetchError)?.status;
+    // Handle 404 (preferences not found) by returning defaults
+    // Also handle 500 errors which might occur for unauthenticated users
+    if (errorStatus === 404 || errorStatus === 500) {
       return {
         id: '',
         user_id: '',
@@ -317,6 +322,8 @@ export async function getUserPreferences(): Promise<UserPreferences> {
         updated_at: new Date().toISOString(),
       };
     }
+    // Re-throw 401/500 errors so providers can handle them (user not authenticated)
+    // Re-throw other errors as well
     throw error;
   }
 }
@@ -499,9 +506,11 @@ export async function getUserAchievements(): Promise<UserAchievement[]> {
     return [];
   }
 
-  if (response.status === 401) {
+  if (response.status === 401 || response.status === 500) {
+    // 401 = unauthorized, 500 = likely invalid token or server error
+    // Return empty array instead of throwing to allow graceful degradation
     const authError = new Error('Authentication required') as FetchError;
-    authError.status = 401;
+    authError.status = response.status;
     throw authError;
   }
 
