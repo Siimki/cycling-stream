@@ -35,6 +35,8 @@ export default function Chat() {
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [historyLoaded, setHistoryLoaded] = useState(false);
+  const [historyError, setHistoryError] = useState<string | null>(null);
+  const retryCountRef = useRef(0);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { isAuthenticated, user } = useAuth();
   const { bonusReady, claimBonus } = useHudStats();
@@ -56,23 +58,70 @@ export default function Chat() {
     return Array.from(targets).filter(Boolean);
   }, [user]);
 
-  // Load chat history on mount (only once)
+  // Load chat history on mount (only once, or when retrying)
+  const loadChatHistory = useCallback(async (isRetry = false) => {
+    if (!enabled || !raceId) {
+      return;
+    }
+
+    setIsLoading(true);
+    setHistoryError(null);
+
+    try {
+      const response = await getChatHistory(raceId, CHAT_HISTORY_LIMIT, 0);
+      // Messages are already in chronological order from API
+      setMessages(response.messages);
+      setHistoryLoaded(true);
+      setIsLoading(false);
+      retryCountRef.current = 0; // Reset retry count on success
+    } catch (err) {
+      const errorStatus = (err && typeof err === 'object' && 'status' in err) ? (err as { status?: number })?.status : undefined;
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load chat messages';
+      
+      // Log all errors for debugging
+      logger.error('Failed to load chat history:', {
+        error: err,
+        status: errorStatus,
+        raceId,
+        retryCount: retryCountRef.current,
+      });
+
+      // Don't show error for 404 (race not found) or 401 (unauthorized) - these are expected
+      // But DO show error for 500 (server error) and other unexpected errors
+      if (errorStatus === 404 || errorStatus === 401) {
+        // Silently handle 404/401 - these are expected scenarios
+        setHistoryLoaded(true);
+        setIsLoading(false);
+        setMessages([]);
+        return;
+      }
+
+      // For 500 and other errors, show error message and allow retry
+      setHistoryError(errorStatus === 500 
+        ? 'Failed to load chat messages. Please try again.'
+        : errorMessage);
+      setIsLoading(false);
+      
+      // Auto-retry for 500 errors with exponential backoff (max 3 retries)
+      if (errorStatus === 500 && retryCountRef.current < 3) {
+        const delay = Math.min(1000 * Math.pow(2, retryCountRef.current), 8000); // 1s, 2s, 4s, max 8s
+        logger.debug(`Auto-retrying chat history load in ${delay}ms (attempt ${retryCountRef.current + 1}/3)`);
+        retryCountRef.current += 1;
+        setTimeout(() => {
+          loadChatHistory(true);
+        }, delay);
+      } else {
+        // Mark as loaded so we don't keep retrying
+        setHistoryLoaded(true);
+      }
+    }
+  }, [enabled, raceId]);
+
   useEffect(() => {
     if (enabled && raceId && !historyLoaded) {
-      getChatHistory(raceId, CHAT_HISTORY_LIMIT, 0)
-        .then((response) => {
-          // Messages are already in chronological order from API
-          setMessages(response.messages);
-          setHistoryLoaded(true);
-          setIsLoading(false);
-        })
-        .catch((err) => {
-          logger.error('Failed to load chat history:', err);
-          setHistoryLoaded(true);
-          setIsLoading(false);
-        });
+      loadChatHistory(false);
     }
-  }, [enabled, raceId, historyLoaded]);
+  }, [enabled, raceId, historyLoaded, loadChatHistory]);
 
   useEffect(() => {
     if (historyLoaded && wsMessages.length > 0) {
@@ -272,7 +321,22 @@ export default function Chat() {
         )}
       </div>
 
-      {/* Error Message */}
+      {/* Error Messages */}
+      {historyError && (
+        <div className="px-5 py-3 bg-destructive/10 border-t border-destructive/20 text-sm font-medium text-destructive flex justify-between items-center shrink-0">
+          <span>{historyError}</span>
+          <button 
+            onClick={() => {
+              setHistoryLoaded(false);
+              retryCountRef.current = 0;
+              loadChatHistory(false);
+            }} 
+            className="underline hover:text-destructive/80 font-bold"
+          >
+            Retry
+          </button>
+        </div>
+      )}
       {error && (
         <div className="px-5 py-3 bg-destructive/10 border-t border-destructive/20 text-sm font-medium text-destructive flex justify-between items-center shrink-0">
            <span>{error}</span>

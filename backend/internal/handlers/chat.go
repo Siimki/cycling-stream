@@ -317,6 +317,13 @@ func (h *ChatHandler) GetChatHistory(c *fiber.Ctx) error {
 		return nil
 	}
 
+	// Validate raceID is a valid UUID
+	if _, err := uuid.Parse(raceID); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Invalid race ID",
+		})
+	}
+
 	// Get limit and offset from query params
 	limit := 50
 	offset := 0
@@ -335,7 +342,12 @@ func (h *ChatHandler) GetChatHistory(c *fiber.Ctx) error {
 
 	messages, err := h.chatRepo.GetByRaceID(raceID, limit, offset)
 	if err != nil {
-		logger.WithError(err).Error("Failed to get chat history")
+		logger.WithFields(map[string]interface{}{
+			"error":   err.Error(),
+			"race_id": raceID,
+			"limit":   limit,
+			"offset":  offset,
+		}).Error("Failed to get chat history")
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": "Failed to fetch chat history",
 		})
@@ -408,6 +420,10 @@ func (h *ChatHandler) hydrateMessageMetadata(messages []*models.ChatMessage) {
 		if msg == nil || msg.UserID == nil || msg.Role != "" {
 			continue
 		}
+		// Skip empty user IDs
+		if *msg.UserID == "" {
+			continue
+		}
 		missing[*msg.UserID] = struct{}{}
 	}
 
@@ -422,15 +438,32 @@ func (h *ChatHandler) hydrateMessageMetadata(messages []*models.ChatMessage) {
 
 	users, err := h.userRepo.GetByIDs(userIDs)
 	if err != nil {
-		logger.WithError(err).Warn("Failed to backfill chat metadata")
+		logger.WithFields(map[string]interface{}{
+			"error":     err.Error(),
+			"user_ids":  userIDs,
+			"count":     len(userIDs),
+		}).Warn("Failed to backfill chat metadata")
 		return
 	}
 
+	// Apply metadata for each message, handling missing users gracefully
 	for _, msg := range messages {
 		if msg == nil || msg.UserID == nil || msg.Role != "" {
 			continue
 		}
-		h.applyMessageMetadata(msg, users[*msg.UserID], false)
+		// Check if user exists in the map - if not, user was deleted or doesn't exist
+		user, userExists := users[*msg.UserID]
+		if !userExists {
+			// Set default role/badges for messages from deleted users
+			if msg.Badges == nil {
+				msg.Badges = []string{}
+			}
+			if msg.Role == "" {
+				msg.Role = "viewer"
+			}
+			continue
+		}
+		h.applyMessageMetadata(msg, user, false)
 	}
 }
 

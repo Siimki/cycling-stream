@@ -23,16 +23,13 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    if (!preferences) {
-      refreshPreferences();
-      return;
-    }
+    // Skip onboarding redirect - allow users to access the site without completing onboarding
+    // if (!preferences.onboarding_completed) {
+    //   router.push('/onboarding');
+    //   return;
+    // }
 
-    if (!preferences.onboarding_completed) {
-      router.push('/onboarding');
-      return;
-    }
-
+    // Allow access even if preferences don't exist yet
     setChecking(false);
   }, [isAuthenticated, isLoading, pathname, preferences, preferencesLoading, refreshPreferences, router]);
 

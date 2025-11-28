@@ -122,14 +122,32 @@ export function useChat(raceId: string, enabled: boolean): UseChatReturn {
     const maxReconnectAttempts = retryDelays.length;
 
     const connect = () => {
-      if (isCleanup) return;
+      // Check cleanup state before doing anything
+      if (isCleanup) {
+        logger.debug('Skipping connection attempt - component is unmounting');
+        return;
+      }
 
       // Close existing connection if any (e.g., when token changes)
       if (wsRef.current && wsRef.current.readyState !== WebSocket.CLOSED) {
         logger.debug('Closing existing WebSocket connection before reconnecting');
-        wsRef.current.onclose = null; // Prevent reconnection logic
-        wsRef.current.close(1000, 'Reconnecting with new token');
+        // Suppress events to prevent error logging
+        wsRef.current.onerror = () => {};
+        wsRef.current.onclose = () => {};
+        try {
+          if (wsRef.current.readyState === WebSocket.CONNECTING || wsRef.current.readyState === WebSocket.OPEN) {
+            wsRef.current.close(1000, 'Reconnecting with new token');
+          }
+        } catch (e) {
+          // Ignore errors during cleanup
+        }
         wsRef.current = null;
+      }
+
+      // Double-check cleanup state before creating new connection
+      if (isCleanup) {
+        logger.debug('Skipping connection attempt - component unmounted during cleanup');
+        return;
       }
 
       try {
@@ -143,8 +161,16 @@ export function useChat(raceId: string, enabled: boolean): UseChatReturn {
         wsRef.current = ws;
 
         ws.onopen = () => {
+          // Check cleanup state immediately on open
           if (isCleanup) {
-            ws?.close();
+            logger.debug('Component unmounted during connection, closing socket');
+            if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
+              try {
+                ws.close(1000, 'Component unmounting');
+              } catch (e) {
+                // Ignore errors
+              }
+            }
             return;
           }
           logger.debug('Chat connected');
@@ -361,27 +387,51 @@ export function useChat(raceId: string, enabled: boolean): UseChatReturn {
       isCleanup = true;
       logger.debug('Cleaning up chat connection');
       
-      // Clear any pending timeouts
+      // Clear any pending timeouts first
       if (reconnectTimeout) {
         clearTimeout(reconnectTimeout);
+        reconnectTimeout = undefined;
       }
       if (pingInterval) {
         clearInterval(pingInterval);
+        pingInterval = undefined;
       }
       
       // Close WebSocket connections gracefully
       const closeSocket = (socket: WebSocket | null) => {
         if (!socket) return;
         
-        // Suppress all error events before closing
+        const state = socket.readyState;
+        
+        // Suppress all error and close events before closing to prevent console warnings
         socket.onerror = () => {}; // Empty handler to suppress errors
         socket.onclose = () => {}; // Empty handler to suppress close events
+        socket.onmessage = null; // Remove message handler
+        socket.onopen = null; // Remove open handler
         
-        // Only close if not already closed or closing
-        if (socket.readyState === WebSocket.CONNECTING || socket.readyState === WebSocket.OPEN) {
-          // Remove listeners to prevent state updates after unmount
-          socket.onmessage = null;
-          socket.onopen = null;
+        // If socket is already closed or closing, nothing to do
+        if (state === WebSocket.CLOSED || state === WebSocket.CLOSING) {
+          return;
+        }
+        
+        // If socket is connecting, wait a brief moment for it to settle
+        if (state === WebSocket.CONNECTING) {
+          // Give it a tiny delay to see if connection completes, then close
+          setTimeout(() => {
+            try {
+              // Check state again - if still connecting or now open, close it
+              if (socket.readyState === WebSocket.CONNECTING || socket.readyState === WebSocket.OPEN) {
+                socket.close(1000, 'Component unmounting');
+              }
+            } catch (e) {
+              // Ignore errors during cleanup
+            }
+          }, 50);
+          return;
+        }
+        
+        // Socket is open, close it normally
+        if (state === WebSocket.OPEN) {
           try {
             socket.close(1000, 'Component unmounting'); // Normal closure
           } catch (e) {
@@ -393,9 +443,6 @@ export function useChat(raceId: string, enabled: boolean): UseChatReturn {
       closeSocket(ws);
       closeSocket(wsRef.current);
       wsRef.current = null;
-      wsRef.current = null;
-      clearInterval(pingInterval);
-      clearTimeout(reconnectTimeout);
       // Note: We don't clear errorTimeout here as it's handled by the parent effect
     };
   }, [raceId, enabled, reconnectTrigger, setChatError, token]);

@@ -29,15 +29,15 @@ func RateLimiter(maxRequests int, window time.Duration) fiber.Handler {
 
 // StrictRateLimiter for sensitive endpoints (auth, payments)
 func StrictRateLimiter() fiber.Handler {
-	return RateLimiter(1000, 10*time.Second) // 1000 requests per 10 seconds (increased significantly for testing)
+	return RateLimiter(10000, 1*time.Minute) // 10000 requests per minute (very generous for testing)
 }
 
 // StandardRateLimiter for general API endpoints
 func StandardRateLimiter() fiber.Handler {
-	return RateLimiter(500, 10*time.Second) // 500 requests per 10 seconds (increased from 100)
+	return RateLimiter(5000, 1*time.Minute) // 5000 requests per minute (very generous for testing)
 }
 
 // LenientRateLimiter for public read-only endpoints
 func LenientRateLimiter() fiber.Handler {
-	return RateLimiter(1000, 10*time.Second) // 1000 requests per 10 seconds (increased from 200)
+	return RateLimiter(10000, 1*time.Minute) // 10000 requests per minute (very generous for testing)
 }

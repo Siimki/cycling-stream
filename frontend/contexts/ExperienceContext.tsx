@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   getUserPreferences,
@@ -67,14 +67,25 @@ interface ExperienceContextValue {
 const ExperienceContext = createContext<ExperienceContextValue | undefined>(undefined);
 
 export function ExperienceProvider({ children }: { children: ReactNode }) {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [loading, setLoading] = useState(true);
   const [preferences, setPreferences] = useState<UserPreferences | null>(null);
   const [uiPreferences, setUIPreferences] = useState<UIPreferences>(DEFAULT_UI_PREFS);
   const [audioPreferences, setAudioPreferences] = useState<AudioPreferences>(DEFAULT_AUDIO_PREFS);
+  const hydratingRef = useRef(false);
   const systemReducedMotion = useSystemReducedMotion();
 
   const hydrate = useCallback(async () => {
+    // Prevent concurrent hydration calls
+    if (hydratingRef.current) {
+      return;
+    }
+
+    // Wait for auth to finish loading before making API calls
+    if (authLoading) {
+      return;
+    }
+
     if (!isAuthenticated) {
       setPreferences(null);
       setUIPreferences(DEFAULT_UI_PREFS);
@@ -83,6 +94,7 @@ export function ExperienceProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    hydratingRef.current = true;
     setLoading(true);
     try {
       const prefs = await getUserPreferences();
@@ -90,14 +102,28 @@ export function ExperienceProvider({ children }: { children: ReactNode }) {
       setUIPreferences(prefs.ui_preferences ?? DEFAULT_UI_PREFS);
       setAudioPreferences(prefs.audio_preferences ?? DEFAULT_AUDIO_PREFS);
     } catch (error) {
-      logger.error('Failed to load preferences', error);
-      setPreferences(null);
-      setUIPreferences(DEFAULT_UI_PREFS);
-      setAudioPreferences(DEFAULT_AUDIO_PREFS);
+      // Silently handle auth errors (401, 404, 500) - user is not authenticated or preferences don't exist
+      const errorStatus = (error as { status?: number })?.status;
+      if (errorStatus === 401 || errorStatus === 404 || errorStatus === 500) {
+        // User is not authenticated, preferences don't exist, or token is invalid - use defaults
+        // Don't log these errors as they're expected
+        setPreferences(null);
+        setUIPreferences(DEFAULT_UI_PREFS);
+        setAudioPreferences(DEFAULT_AUDIO_PREFS);
+      } else {
+        // Only log unexpected errors (but don't spam the console)
+        if (errorStatus !== undefined) {
+          logger.error('Failed to load preferences', error);
+        }
+        setPreferences(null);
+        setUIPreferences(DEFAULT_UI_PREFS);
+        setAudioPreferences(DEFAULT_AUDIO_PREFS);
+      }
     } finally {
       setLoading(false);
+      hydratingRef.current = false;
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, authLoading]);
 
   useEffect(() => {
     hydrate();

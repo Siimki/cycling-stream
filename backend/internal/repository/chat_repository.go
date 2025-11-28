@@ -60,7 +60,7 @@ func (r *ChatRepository) Create(message *models.ChatMessage) error {
 
 func (r *ChatRepository) GetByRaceID(raceID string, limit, offset int) ([]*models.ChatMessage, error) {
 	query := `
-		SELECT id, race_id, user_id, username, message, user_role, badges, special_emote, created_at
+		SELECT id, race_id, user_id, username, message, user_role, COALESCE(badges::text, '[]'), special_emote, created_at
 		FROM chat_messages
 		WHERE race_id = $1
 		ORDER BY created_at DESC
@@ -77,7 +77,8 @@ func (r *ChatRepository) GetByRaceID(raceID string, limit, offset int) ([]*model
 	for rows.Next() {
 		var msg models.ChatMessage
 		var userID sql.NullString
-		var badgesJSON []byte
+		var userRole sql.NullString
+		var badgesJSONStr string // Scan JSONB as text
 		var specialEmote bool
 
 		err := rows.Scan(
@@ -86,8 +87,8 @@ func (r *ChatRepository) GetByRaceID(raceID string, limit, offset int) ([]*model
 			&userID,
 			&msg.Username,
 			&msg.Message,
-			&msg.Role,
-			&badgesJSON,
+			&userRole,
+			&badgesJSONStr,
 			&specialEmote,
 			&msg.CreatedAt,
 		)
@@ -95,17 +96,26 @@ func (r *ChatRepository) GetByRaceID(raceID string, limit, offset int) ([]*model
 			return nil, fmt.Errorf("failed to scan chat message: %w", err)
 		}
 
+		// Initialize defaults
+		msg.Badges = []string{}
+		msg.Role = ""
+
 		if userID.Valid {
 			msg.UserID = &userID.String
 		}
 
-		if len(badgesJSON) > 0 {
-			if err := json.Unmarshal(badgesJSON, &msg.Badges); err != nil {
+		if userRole.Valid {
+			msg.Role = userRole.String
+		}
+
+		// Parse badges JSON
+		if badgesJSONStr != "" && badgesJSONStr != "null" {
+			if err := json.Unmarshal([]byte(badgesJSONStr), &msg.Badges); err != nil {
+				// If unmarshaling fails, use empty array
 				msg.Badges = []string{}
 			}
-		} else {
-			msg.Badges = []string{}
 		}
+
 		msg.SpecialEmote = specialEmote
 
 		messages = append(messages, &msg)
@@ -125,7 +135,7 @@ func (r *ChatRepository) GetByRaceID(raceID string, limit, offset int) ([]*model
 
 func (r *ChatRepository) GetRecentByRaceID(raceID string, limit int) ([]*models.ChatMessage, error) {
 	query := `
-		SELECT id, race_id, user_id, username, message, user_role, badges, special_emote, created_at
+		SELECT id, race_id, user_id, username, message, user_role, COALESCE(badges::text, '[]'), special_emote, created_at
 		FROM chat_messages
 		WHERE race_id = $1
 		ORDER BY created_at DESC
@@ -142,7 +152,8 @@ func (r *ChatRepository) GetRecentByRaceID(raceID string, limit int) ([]*models.
 	for rows.Next() {
 		var msg models.ChatMessage
 		var userID sql.NullString
-		var badgesJSON []byte
+		var userRole sql.NullString
+		var badgesJSONStr string // Scan JSONB as text
 		var specialEmote bool
 
 		err := rows.Scan(
@@ -151,8 +162,8 @@ func (r *ChatRepository) GetRecentByRaceID(raceID string, limit int) ([]*models.
 			&userID,
 			&msg.Username,
 			&msg.Message,
-			&msg.Role,
-			&badgesJSON,
+			&userRole,
+			&badgesJSONStr,
 			&specialEmote,
 			&msg.CreatedAt,
 		)
@@ -160,17 +171,26 @@ func (r *ChatRepository) GetRecentByRaceID(raceID string, limit int) ([]*models.
 			return nil, fmt.Errorf("failed to scan chat message: %w", err)
 		}
 
+		// Initialize defaults
+		msg.Badges = []string{}
+		msg.Role = ""
+
 		if userID.Valid {
 			msg.UserID = &userID.String
 		}
 
-		if len(badgesJSON) > 0 {
-			if err := json.Unmarshal(badgesJSON, &msg.Badges); err != nil {
+		if userRole.Valid {
+			msg.Role = userRole.String
+		}
+
+		// Parse badges JSON
+		if badgesJSONStr != "" && badgesJSONStr != "null" {
+			if err := json.Unmarshal([]byte(badgesJSONStr), &msg.Badges); err != nil {
+				// If unmarshaling fails, use empty array
 				msg.Badges = []string{}
 			}
-		} else {
-			msg.Badges = []string{}
 		}
+
 		msg.SpecialEmote = specialEmote
 
 		messages = append(messages, &msg)

@@ -29,6 +29,12 @@ func (h *UserPreferencesHandler) GetPreferences(c *fiber.Ctx) error {
 		})
 	}
 
+	if prefs == nil {
+		return c.Status(fiber.StatusNotFound).JSON(APIError{
+			Error: "Preferences not found",
+		})
+	}
+
 	return c.Status(fiber.StatusOK).JSON(prefs)
 }
 

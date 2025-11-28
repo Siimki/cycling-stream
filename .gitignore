@@ -27,6 +27,7 @@ out/
 go.work
 backend/api
 backend/main
+main
 
 # IDE
 .vscode/

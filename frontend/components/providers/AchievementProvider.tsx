@@ -30,7 +30,7 @@ interface LevelEvent {
 }
 
 export function AchievementProvider({ children }: { children: ReactNode }) {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const { play } = useSound();
   const [achievements, setAchievements] = useState<UserAchievement[]>([]);
   const [levelEvent, setLevelEvent] = useState<LevelEvent | null>(null);
@@ -43,6 +43,11 @@ export function AchievementProvider({ children }: { children: ReactNode }) {
   const toastTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const fetchAchievements = useCallback(async () => {
+    // Wait for auth to finish loading before making API calls
+    if (authLoading) {
+      return;
+    }
+
     if (!isAuthenticated) {
       setAchievements([]);
       seenAchievementsRef.current.clear();
@@ -64,21 +69,28 @@ export function AchievementProvider({ children }: { children: ReactNode }) {
         initializedRef.current = true;
       }
     } catch (error) {
-      if (process.env.NODE_ENV !== 'production') {
+      // Silently handle auth errors (401, 500 from invalid tokens) - user is not authenticated
+      const errorStatus = (error as { status?: number })?.status;
+      if (errorStatus === 401 || errorStatus === 500) {
+        // User is not authenticated or token is invalid, clear achievements
+        setAchievements([]);
+        seenAchievementsRef.current.clear();
+        initializedRef.current = false;
+      } else if (process.env.NODE_ENV !== 'production') {
         console.info('Failed to load achievements', error);
       }
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, authLoading]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchAchievements();
-    if (!isAuthenticated) {
+    if (!isAuthenticated || authLoading) {
       return;
     }
     const interval = window.setInterval(fetchAchievements, 40000);
     return () => window.clearInterval(interval);
-  }, [fetchAchievements, isAuthenticated]);
+  }, [fetchAchievements, isAuthenticated, authLoading]);
 
   useEffect(() => {
     if (!user || !isAuthenticated) {

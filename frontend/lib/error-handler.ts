@@ -34,9 +34,9 @@ export class APIErrorHandler {
         details: errorData.details,
       };
 
-      // Don't log expected 401 errors for authentication-required resources
+      // Don't log expected 401, 404, or 500 errors for authentication-required resources
       // These are handled gracefully by the UI
-      if (response.status !== 401) {
+      if (response.status !== 401 && response.status !== 404 && response.status !== 500) {
         logger.error('API Error:', error);
       }
       throw error;

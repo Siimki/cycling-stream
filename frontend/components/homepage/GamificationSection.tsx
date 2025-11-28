@@ -49,13 +49,13 @@ export function GamificationSection({ missions, weeklyData, level }: Gamificatio
           {/* Mission Progress */}
           {displayMissions.length > 0 ? (
             <div className="mb-6">
-              {displayMissions.map((mission) => {
+              {displayMissions.map((mission, index) => {
                 const progressPercent = mission.target_value > 0
                   ? Math.min((mission.progress / mission.target_value) * 100, 100)
                   : 0;
 
                 return (
-                  <div key={mission.id} className="mb-6">
+                  <div key={mission.id || mission.mission_id || `mission-${index}`} className="mb-6">
                     <div className="flex justify-between items-center mb-2">
                       <span className="text-sm text-foreground font-medium">
                         {mission.title}

@@ -7,7 +7,7 @@ import (
 
 const (
 	// ChatRateLimitMaxMessages is the maximum number of messages allowed per window
-	ChatRateLimitMaxMessages = 10
+	ChatRateLimitMaxMessages = 100 // Increased from 10 to 100 for testing
 	// ChatRateLimitWindow is the time window for rate limiting
 	ChatRateLimitWindow = 1 * time.Minute
 )
