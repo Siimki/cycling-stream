@@ -28,7 +28,7 @@ export const VideoSettingsMenu = memo(function VideoSettingsMenu({
   if (!isOpen) return null;
 
   return (
-    <div className="absolute bottom-full right-0 mb-2 bg-black/90 rounded-lg overflow-hidden min-w-[180px] z-10 border border-white/10 shadow-lg shadow-black/30">
+    <div className="absolute bottom-full right-0 mb-2 bg-black/80 backdrop-blur-md rounded-lg overflow-hidden min-w-[200px] z-20 border border-white/10 shadow-2xl shadow-black/40 transition-all duration-150 ease-out">
       <div className="px-4 py-3 border-b border-white/10">
         <p className="text-[11px] uppercase tracking-[0.08em] text-white/60">Playback Speed</p>
         <div className="mt-2 grid grid-cols-3 gap-1">

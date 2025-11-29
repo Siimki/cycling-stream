@@ -80,7 +80,7 @@ export function Navigation({ variant = "full" }: NavigationProps) {
                     }`}
                   >
                     Live
-                    <span className="ml-2 w-2.5 h-2.5 rounded-full bg-primary animate-live-pulse" />
+                    <span className="ml-2 w-2.5 h-2.5 rounded-full bg-primary" />
                     {isActive('/') && (
                       <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full" />
                     )}

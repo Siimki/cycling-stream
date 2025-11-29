@@ -12,9 +12,8 @@ interface VideoOverlayProps {
 
 export const VideoOverlay = memo(function VideoOverlay({ showControls }: VideoOverlayProps) {
   const overlayFade = useMotionPreset('overlay-fade', { disabled: !showControls });
-  const liveBadgeMotion = useMotionPreset('stat-emphasis', { disabled: !showControls });
-  const livePulse = useMotionPreset('vip-ring', { disabled: !showControls });
-  const sweepHighlight = useSweepHighlight({ disabled: !showControls });
+  const liveBadgeMotion = useMotionPreset('overlay-fade', { disabled: !showControls });
+  const sweepHighlight = useSweepHighlight({ disabled: true });
 
   return (
     <>
@@ -44,12 +43,11 @@ export const VideoOverlay = memo(function VideoOverlay({ showControls }: VideoOv
           liveBadgeMotion
         )}
       >
-        <div className="flex items-center gap-1.5 bg-live/90 pl-1.5 pr-2 py-0.5 rounded text-white shadow-lg shadow-red-500/25">
-          <span className={cn('w-1.5 h-1.5 rounded-full bg-white', livePulse)} />
-          <span className="text-xs font-bold uppercase tracking-wide">Live</span>
+        <div className="flex items-center gap-1.5 bg-primary/90 pl-2 pr-2.5 py-0.5 rounded text-white shadow-lg shadow-primary/25">
+          <span className="w-1.5 h-1.5 rounded-full bg-white/90" />
+          <span className="text-[0.75rem] sm:text-sm font-semibold uppercase tracking-wide">Live</span>
         </div>
       </div>
     </>
   );
 });
-

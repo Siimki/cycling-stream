@@ -29,6 +29,8 @@ export interface UseVideoPlayerReturn {
   currentQuality: number;
   hasHls: boolean;
   watchTime: number;
+  currentTime: number;
+  duration: number | null;
   setIsPlaying: (playing: boolean) => void;
   setIsMuted: (muted: boolean) => void;
   setVolume: (volume: number[]) => void;
@@ -39,6 +41,7 @@ export interface UseVideoPlayerReturn {
   handleVolumeChange: (newVolume: number[]) => void;
   handlePlaybackSpeedChange: (speed: number) => void;
   handleQualityChange: (level: number) => void;
+  handleSeek: (time: number) => void;
   toggleFullscreen: () => Promise<void>;
 }
 
@@ -58,6 +61,8 @@ export function useVideoPlayer(streamUrl?: string, status: string = 'offline'): 
   const [currentQuality, setCurrentQuality] = useState<number>(-1);
   const [hasHls, setHasHls] = useState(false);
   const [watchTime, setWatchTime] = useState(0);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState<number | null>(null);
   const networkErrorCountRef = useRef(0);
 
   // Watch time counter
@@ -147,10 +152,19 @@ export function useVideoPlayer(streamUrl?: string, status: string = 'offline'): 
     }
   }, []);
 
+  const handleSeek = useCallback((time: number) => {
+    if (videoRef.current && Number.isFinite(time)) {
+      videoRef.current.currentTime = time;
+      setCurrentTime(time);
+    }
+  }, []);
+
   // HLS initialization and management
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!videoRef.current) return;
+    setCurrentTime(0);
+    setDuration(null);
 
     // Cleanup previous HLS instance
     if (hlsRef.current) {
@@ -166,11 +180,29 @@ export function useVideoPlayer(streamUrl?: string, status: string = 'offline'): 
       setIsPlaying(true);
     };
     const handlePause = () => setIsPlaying(false);
+    const handleLoadedMetadata = () => {
+      if (!videoRef.current) return;
+      const dur = videoRef.current.duration;
+      if (Number.isFinite(dur) && dur !== Infinity) {
+        setDuration(dur);
+      }
+    };
+    const handleTimeUpdate = () => {
+      if (!videoRef.current) return;
+      const time = videoRef.current.currentTime;
+      setCurrentTime(time);
+      const dur = videoRef.current.duration;
+      if (Number.isFinite(dur) && dur !== Infinity) {
+        setDuration(dur);
+      }
+    };
 
     videoRef.current.addEventListener('waiting', handleWaiting);
     videoRef.current.addEventListener('canplay', handleCanPlay);
     videoRef.current.addEventListener('playing', handlePlaying);
     videoRef.current.addEventListener('pause', handlePause);
+    videoRef.current.addEventListener('loadedmetadata', handleLoadedMetadata);
+    videoRef.current.addEventListener('timeupdate', handleTimeUpdate);
 
     // Initialize HLS for both live and offline/replay streams if URL is available
     if (streamUrl) {
@@ -258,6 +290,8 @@ export function useVideoPlayer(streamUrl?: string, status: string = 'offline'): 
         videoRef.current.removeEventListener('canplay', handleCanPlay);
         videoRef.current.removeEventListener('playing', handlePlaying);
         videoRef.current.removeEventListener('pause', handlePause);
+        videoRef.current.removeEventListener('loadedmetadata', handleLoadedMetadata);
+        videoRef.current.removeEventListener('timeupdate', handleTimeUpdate);
       }
       if (hlsRef.current) {
         hlsRef.current.destroy();
@@ -283,6 +317,8 @@ export function useVideoPlayer(streamUrl?: string, status: string = 'offline'): 
     currentQuality,
     hasHls,
     watchTime,
+    currentTime,
+    duration,
     setIsPlaying,
     setIsMuted,
     setVolume,
@@ -293,7 +329,7 @@ export function useVideoPlayer(streamUrl?: string, status: string = 'offline'): 
     handleVolumeChange,
     handlePlaybackSpeedChange,
     handleQualityChange,
+    handleSeek,
     toggleFullscreen,
   };
 }
-

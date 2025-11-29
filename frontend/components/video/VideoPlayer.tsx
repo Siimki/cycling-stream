@@ -32,22 +32,25 @@ export default function VideoPlayer({ streamUrl, status, streamType, sourceId, s
     error,
     isBuffering,
     isPlaying,
-    isMuted,
-    volume,
-    playbackSpeed,
-    qualityLevels,
-    currentQuality,
-    watchTime,
-    togglePlay,
-    toggleMute,
-    handleVolumeChange,
-    handlePlaybackSpeedChange,
-    handleQualityChange,
-    toggleFullscreen,
-  } = useVideoPlayer(streamUrl, status);
+  isMuted,
+  volume,
+  playbackSpeed,
+  qualityLevels,
+  currentQuality,
+  watchTime,
+  currentTime,
+  duration,
+  togglePlay,
+  toggleMute,
+  handleVolumeChange,
+  handlePlaybackSpeedChange,
+  handleQualityChange,
+  handleSeek,
+  toggleFullscreen,
+} = useVideoPlayer(streamUrl, status);
 
-  const { trackPlay, trackPause, trackHeartbeat, trackEnded, trackError, trackBufferStart, trackBufferEnd } =
-    useAnalyticsTracking(streamId);
+const { trackPlay, trackPause, trackHeartbeat, trackEnded, trackError, trackBufferStart, trackBufferEnd } =
+  useAnalyticsTracking(streamId);
   const isYouTube = status === 'live' && streamType === 'youtube' && !!sourceId;
   // Check if this is a Bunny Stream embed URL (player.mediadelivery.net/embed)
   // vs HLS URL (stream.mediadelivery.net/hls)
@@ -291,6 +294,9 @@ export default function VideoPlayer({ streamUrl, status, streamType, sourceId, s
         volume={volume}
         playbackSpeed={playbackSpeed}
         watchTime={watchTime}
+        currentTime={currentTime}
+        duration={duration}
+        isLive={status === 'live'}
         qualityLevels={qualityLevels}
         currentQuality={currentQuality}
         showSettingsMenu={showSettingsMenu}
@@ -299,6 +305,7 @@ export default function VideoPlayer({ streamUrl, status, streamType, sourceId, s
         onVolumeChange={handleVolumeChange}
         onPlaybackSpeedChange={handlePlaybackSpeedChangeWithClose}
         onQualityChange={handleQualityChangeWithClose}
+        onSeek={handleSeek}
         onToggleFullscreen={toggleFullscreen}
         onToggleSettingsMenu={() => setShowSettingsMenu(!showSettingsMenu)}
         onCloseMenus={handleCloseMenus}
