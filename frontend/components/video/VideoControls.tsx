@@ -7,8 +7,7 @@ import { Play, Pause, Volume2, VolumeX, Maximize, Settings } from 'lucide-react'
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { formatTimeDetailed } from '@/lib/formatters';
-import { VideoSpeedMenu } from './VideoSpeedMenu';
-import { VideoQualityMenu } from './VideoQualityMenu';
+import { VideoSettingsMenu } from './VideoSettingsMenu';
 import { QualityLevel } from '@/hooks/useVideoPlayer';
 
 interface VideoControlsProps {
@@ -20,16 +19,14 @@ interface VideoControlsProps {
   watchTime: number;
   qualityLevels: QualityLevel[];
   currentQuality: number;
-  showSpeedMenu: boolean;
-  showQualityMenu: boolean;
+  showSettingsMenu: boolean;
   onTogglePlay: () => void;
   onToggleMute: () => void;
   onVolumeChange: (volume: number[]) => void;
   onPlaybackSpeedChange: (speed: number) => void;
   onQualityChange: (level: number) => void;
   onToggleFullscreen: () => Promise<void>;
-  onToggleSpeedMenu: () => void;
-  onToggleQualityMenu: () => void;
+  onToggleSettingsMenu: () => void;
   onCloseMenus: () => void;
 }
 
@@ -42,16 +39,14 @@ export const VideoControls = memo(function VideoControls({
   watchTime,
   qualityLevels,
   currentQuality,
-  showSpeedMenu,
-  showQualityMenu,
+  showSettingsMenu,
   onTogglePlay,
   onToggleMute,
   onVolumeChange,
   onPlaybackSpeedChange,
   onQualityChange,
   onToggleFullscreen,
-  onToggleSpeedMenu,
-  onToggleQualityMenu,
+  onToggleSettingsMenu,
   onCloseMenus,
 }: VideoControlsProps) {
   return (
@@ -105,40 +100,21 @@ export const VideoControls = memo(function VideoControls({
           </div>
 
           <div className="flex items-center gap-0.5">
-            {/* Quality Settings */}
-            {qualityLevels.length > 0 && (
-              <div className="relative">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="text-white hover:bg-white/10 w-8 h-8"
-                  onClick={onToggleQualityMenu}
-                >
-                  <Settings className="w-4 h-4" />
-                </Button>
-                <VideoQualityMenu
-                  isOpen={showQualityMenu}
-                  qualityLevels={qualityLevels}
-                  currentQuality={currentQuality}
-                  onQualityChange={onQualityChange}
-                  onClose={onCloseMenus}
-                />
-              </div>
-            )}
-
-            {/* Speed Settings */}
             <div className="relative">
               <Button
                 variant="ghost"
                 size="icon"
                 className="text-white hover:bg-white/10 w-8 h-8"
-                onClick={onToggleSpeedMenu}
+                onClick={onToggleSettingsMenu}
               >
                 <Settings className="w-4 h-4" />
               </Button>
-              <VideoSpeedMenu
-                isOpen={showSpeedMenu}
-                currentSpeed={playbackSpeed}
+              <VideoSettingsMenu
+                isOpen={showSettingsMenu}
+                qualityLevels={qualityLevels}
+                currentQuality={currentQuality}
+                playbackSpeed={playbackSpeed}
+                onQualityChange={onQualityChange}
                 onSpeedChange={onPlaybackSpeedChange}
                 onClose={onCloseMenus}
               />
@@ -158,4 +134,3 @@ export const VideoControls = memo(function VideoControls({
     </div>
   );
 });
-

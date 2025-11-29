@@ -58,6 +58,7 @@ export function useVideoPlayer(streamUrl?: string, status: string = 'offline'): 
   const [currentQuality, setCurrentQuality] = useState<number>(-1);
   const [hasHls, setHasHls] = useState(false);
   const [watchTime, setWatchTime] = useState(0);
+  const networkErrorCountRef = useRef(0);
 
   // Watch time counter
   useEffect(() => {
@@ -171,11 +172,12 @@ export function useVideoPlayer(streamUrl?: string, status: string = 'offline'): 
     videoRef.current.addEventListener('playing', handlePlaying);
     videoRef.current.addEventListener('pause', handlePause);
 
-    if (status === 'live' && streamUrl) {
+    // Initialize HLS for both live and offline/replay streams if URL is available
+    if (streamUrl) {
       if (Hls.isSupported()) {
         const hls = new Hls({
           enableWorker: true,
-          lowLatencyMode: true,
+          lowLatencyMode: status === 'live',
           backBufferLength: 90,
         });
 
@@ -193,6 +195,7 @@ export function useVideoPlayer(streamUrl?: string, status: string = 'offline'): 
             }));
             setQualityLevels(levels);
             setCurrentQuality(hls.currentLevel);
+            networkErrorCountRef.current = 0;
 
             videoRef.current.play().catch((err) => {
               logger.error('Error playing video:', err);
@@ -209,17 +212,26 @@ export function useVideoPlayer(streamUrl?: string, status: string = 'offline'): 
           if (data.fatal) {
             switch (data.type) {
               case Hls.ErrorTypes.NETWORK_ERROR:
-                logger.error('Network error, trying to recover...');
+                networkErrorCountRef.current += 1;
+                logger.error('Network error, trying to recover...', data);
+                
+                if (networkErrorCountRef.current >= 3) {
+                  logger.error('Too many network errors, giving up');
+                  hls.destroy();
+                  setTimeout(() => setError('Failed to load stream after multiple attempts.'), 0);
+                  return;
+                }
+                
                 hls.startLoad();
                 break;
               case Hls.ErrorTypes.MEDIA_ERROR:
-                logger.error('Media error, trying to recover...');
+                logger.error('Media error, trying to recover...', data);
                 hls.recoverMediaError();
                 break;
               default:
-                logger.error('Fatal error, destroying HLS instance');
+                logger.error('Fatal error, destroying HLS instance', data);
                 hls.destroy();
-                setTimeout(() => setError('Stream error occurred'), 0);
+                setTimeout(() => setError('Stream error occurred.'), 0);
                 break;
             }
           }
@@ -253,6 +265,7 @@ export function useVideoPlayer(streamUrl?: string, status: string = 'offline'): 
         // Cleanup state - valid pattern for cleanup
         setHasHls(false);
       }
+      networkErrorCountRef.current = 0;
     };
   }, [streamUrl, status]); // Event handlers are stable, no need in deps
 

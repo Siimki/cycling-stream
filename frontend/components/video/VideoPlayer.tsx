@@ -21,8 +21,7 @@ interface VideoPlayerProps {
 
 export default function VideoPlayer({ streamUrl, status, streamType, sourceId, streamId }: VideoPlayerProps) {
   const [showControls, setShowControls] = useState(false);
-  const [showQualityMenu, setShowQualityMenu] = useState(false);
-  const [showSpeedMenu, setShowSpeedMenu] = useState(false);
+  const [showSettingsMenu, setShowSettingsMenu] = useState(false);
   const controlsTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastErrorRef = useRef<string | null>(null);
   const lastBufferingRef = useRef<boolean>(false);
@@ -50,8 +49,10 @@ export default function VideoPlayer({ streamUrl, status, streamType, sourceId, s
   const { trackPlay, trackPause, trackHeartbeat, trackEnded, trackError, trackBufferStart, trackBufferEnd } =
     useAnalyticsTracking(streamId);
   const isYouTube = status === 'live' && streamType === 'youtube' && !!sourceId;
-  // Check if this is a Bunny Stream embed (for replays)
-  const isBunnyStream = streamUrl && streamUrl.includes('mediadelivery.net');
+  // Check if this is a Bunny Stream embed URL (player.mediadelivery.net/embed)
+  // vs HLS URL (stream.mediadelivery.net/hls)
+  const isBunnyStreamEmbed = streamUrl && streamUrl.includes('player.mediadelivery.net/embed');
+  const isBunnyStreamHLS = streamUrl && (streamUrl.includes('stream.mediadelivery.net/hls') || streamUrl.includes('.m3u8'));
 
   // Keyboard shortcuts - must be called before any conditional returns
   useVideoKeyboardShortcuts({
@@ -96,7 +97,7 @@ export default function VideoPlayer({ streamUrl, status, streamType, sourceId, s
   const handlePlaybackSpeedChangeWithClose = useCallback(
     (speed: number) => {
       handlePlaybackSpeedChange(speed);
-      setShowSpeedMenu(false);
+      setShowSettingsMenu(false);
     },
     [handlePlaybackSpeedChange]
   );
@@ -104,14 +105,13 @@ export default function VideoPlayer({ streamUrl, status, streamType, sourceId, s
   const handleQualityChangeWithClose = useCallback(
     (level: number) => {
       handleQualityChange(level);
-      setShowQualityMenu(false);
+      setShowSettingsMenu(false);
     },
     [handleQualityChange]
   );
 
   const handleCloseMenus = useCallback(() => {
-    setShowQualityMenu(false);
-    setShowSpeedMenu(false);
+    setShowSettingsMenu(false);
   }, []);
 
   // Fire tracking events for YouTube (limited without iframe API)
@@ -209,8 +209,9 @@ export default function VideoPlayer({ streamUrl, status, streamType, sourceId, s
     );
   }
 
-  // Bunny Stream Player (for replays/embeds)
-  if (isBunnyStream && streamUrl) {
+  // Bunny Stream Embed Player (for embed player only)
+  // Only use embed player if the URL is explicitly an embed URL
+  if (isBunnyStreamEmbed && streamUrl) {
     // Extract the embed URL - if it's already a full URL, use it directly
     // Otherwise construct it from sourceId if available
     let embedUrl = streamUrl;
@@ -234,24 +235,21 @@ export default function VideoPlayer({ streamUrl, status, streamType, sourceId, s
     );
   }
 
-  if (status !== 'live' || !streamUrl) {
-    // Note: Authentication checks are handled by AuthRequiredWrapper
-    // This component only shows the stream or offline message
-    // Only show offline if it's not a Bunny Stream embed
-    if (!isBunnyStream) {
-      return (
-        <div className="bg-card aspect-video flex items-center justify-center rounded-lg relative overflow-hidden border border-border/50 shadow-lg shadow-black/20">
-          <div className="absolute inset-0 bg-gradient-to-br from-background to-card"></div>
-          <div className="relative text-center text-foreground z-10 px-4">
-            <div className="text-6xl mb-4">📺</div>
-            <p className="text-2xl font-semibold mb-2">Stream Offline</p>
-            <p className="text-muted-foreground">
-              The stream is not currently available. Please check back later.
-            </p>
-          </div>
+  // Show offline message only if there's no stream URL available
+  // Allow playback for both live and offline/replay streams if URL exists
+  if (!streamUrl) {
+    return (
+      <div className="bg-card aspect-video flex items-center justify-center rounded-lg relative overflow-hidden border border-border/50 shadow-lg shadow-black/20">
+        <div className="absolute inset-0 bg-gradient-to-br from-background to-card"></div>
+        <div className="relative text-center text-foreground z-10 px-4">
+          <div className="text-6xl mb-4">📺</div>
+          <p className="text-2xl font-semibold mb-2">Stream Offline</p>
+          <p className="text-muted-foreground">
+            The stream is not currently available. Please check back later.
+          </p>
         </div>
-      );
-    }
+      </div>
+    );
   }
 
   if (error) {
@@ -295,21 +293,19 @@ export default function VideoPlayer({ streamUrl, status, streamType, sourceId, s
         watchTime={watchTime}
         qualityLevels={qualityLevels}
         currentQuality={currentQuality}
-        showSpeedMenu={showSpeedMenu}
-        showQualityMenu={showQualityMenu}
+        showSettingsMenu={showSettingsMenu}
         onTogglePlay={togglePlay}
         onToggleMute={toggleMute}
         onVolumeChange={handleVolumeChange}
         onPlaybackSpeedChange={handlePlaybackSpeedChangeWithClose}
         onQualityChange={handleQualityChangeWithClose}
         onToggleFullscreen={toggleFullscreen}
-        onToggleSpeedMenu={() => setShowSpeedMenu(!showSpeedMenu)}
-        onToggleQualityMenu={() => setShowQualityMenu(!showQualityMenu)}
+        onToggleSettingsMenu={() => setShowSettingsMenu(!showSettingsMenu)}
         onCloseMenus={handleCloseMenus}
       />
 
       {/* Click outside to close menus */}
-      {(showQualityMenu || showSpeedMenu) && (
+      {showSettingsMenu && (
         <div className="absolute inset-0 z-[5]" onClick={handleCloseMenus} />
       )}
     </div>

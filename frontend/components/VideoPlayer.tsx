@@ -15,8 +15,7 @@ interface VideoPlayerProps {
 
 export default function VideoPlayer({ streamUrl, status, requiresLogin }: VideoPlayerProps) {
   const [showControls, setShowControls] = useState(false);
-  const [showQualityMenu, setShowQualityMenu] = useState(false);
-  const [showSpeedMenu, setShowSpeedMenu] = useState(false);
+  const [showSettingsMenu, setShowSettingsMenu] = useState(false);
   const controlsTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const {
@@ -81,7 +80,7 @@ export default function VideoPlayer({ streamUrl, status, requiresLogin }: VideoP
   const handlePlaybackSpeedChangeWithClose = useCallback(
     (speed: number) => {
       handlePlaybackSpeedChange(speed);
-      setShowSpeedMenu(false);
+      setShowSettingsMenu(false);
     },
     [handlePlaybackSpeedChange]
   );
@@ -89,14 +88,13 @@ export default function VideoPlayer({ streamUrl, status, requiresLogin }: VideoP
   const handleQualityChangeWithClose = useCallback(
     (level: number) => {
       handleQualityChange(level);
-      setShowQualityMenu(false);
+      setShowSettingsMenu(false);
     },
     [handleQualityChange]
   );
 
   const handleCloseMenus = useCallback(() => {
-    setShowQualityMenu(false);
-    setShowSpeedMenu(false);
+    setShowSettingsMenu(false);
   }, []);
 
   if (status !== 'live' || !streamUrl) {
@@ -172,21 +170,19 @@ export default function VideoPlayer({ streamUrl, status, requiresLogin }: VideoP
         watchTime={watchTime}
         qualityLevels={qualityLevels}
         currentQuality={currentQuality}
-        showSpeedMenu={showSpeedMenu}
-        showQualityMenu={showQualityMenu}
+        showSettingsMenu={showSettingsMenu}
         onTogglePlay={togglePlay}
         onToggleMute={toggleMute}
         onVolumeChange={handleVolumeChange}
         onPlaybackSpeedChange={handlePlaybackSpeedChangeWithClose}
         onQualityChange={handleQualityChangeWithClose}
         onToggleFullscreen={toggleFullscreen}
-        onToggleSpeedMenu={() => setShowSpeedMenu(!showSpeedMenu)}
-        onToggleQualityMenu={() => setShowQualityMenu(!showQualityMenu)}
+        onToggleSettingsMenu={() => setShowSettingsMenu(!showSettingsMenu)}
         onCloseMenus={handleCloseMenus}
       />
 
       {/* Click outside to close menus */}
-      {(showQualityMenu || showSpeedMenu) && (
+      {showSettingsMenu && (
         <div className="absolute inset-0 z-[5]" onClick={handleCloseMenus} />
       )}
     </div>
