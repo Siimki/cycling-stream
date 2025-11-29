@@ -23,6 +23,13 @@ type Config struct {
 	StripeWebhookSecret string
 	FrontendURL         string
 	XP                  *XPConfig
+	Bunny               *BunnyConfig
+}
+
+type BunnyConfig struct {
+	APIKey    string
+	LibraryID string
+	BaseURL   string
 }
 
 func Load() (*Config, error) {
@@ -47,6 +54,7 @@ func Load() (*Config, error) {
 		StripeWebhookSecret: getEnv("STRIPE_WEBHOOK_SECRET", ""),
 		FrontendURL:         getEnv("FRONTEND_URL", "http://localhost:3000"),
 		XP:                  LoadXPConfig(),
+		Bunny:               LoadBunnyConfig(),
 	}
 
 	// Validate configuration
@@ -119,6 +127,18 @@ func (c *Config) Validate(isProduction bool) error {
 		errors = append(errors, "PORT must be a valid port number (1-65535)")
 	}
 
+	// Bunny config (warn in dev, require in prod if enabled)
+	if c.Bunny != nil {
+		if isProduction {
+			if c.Bunny.APIKey == "" {
+				errors = append(errors, "BUNNY_API_KEY is required in production for analytics sync")
+			}
+			if c.Bunny.LibraryID == "" {
+				errors = append(errors, "BUNNY_LIBRARY_ID is required in production for analytics sync")
+			}
+		}
+	}
+
 	if len(errors) > 0 {
 		return fmt.Errorf("validation errors:\n  - %s", strings.Join(errors, "\n  - "))
 	}
@@ -146,4 +166,12 @@ func getEnvAsInt(key string, defaultValue int) int {
 		return value
 	}
 	return defaultValue
+}
+
+func LoadBunnyConfig() *BunnyConfig {
+	return &BunnyConfig{
+		APIKey:    getEnv("BUNNY_API_KEY", ""),
+		LibraryID: getEnv("BUNNY_LIBRARY_ID", ""),
+		BaseURL:   getEnv("BUNNY_API_BASE_URL", "https://video.bunnycdn.com/library"),
+	}
 }

@@ -19,14 +19,17 @@ export interface Race {
   stage_length_km?: number;
   created_at: string;
   updated_at: string;
+  stream_status?: string;
 }
 
 export interface StreamResponse {
+  stream_id?: string;
   status: string;
   stream_type?: string;
   source_id?: string;
   origin_url?: string;
   cdn_url?: string;
+  provider?: string;
 }
 
 /**
@@ -545,4 +548,3 @@ export async function claimWeeklyReward(): Promise<{ message: string }> {
     method: 'POST',
   });
 }
-

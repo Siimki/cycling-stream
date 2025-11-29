@@ -75,6 +75,12 @@ export default function AdminPage() {
           >
             View Analytics
           </Link>
+          <Link
+            href="/admin/analytics/streams"
+            className="inline-block px-4 py-2 bg-secondary text-secondary-foreground rounded hover:bg-secondary/80"
+          >
+            Stream Analytics
+          </Link>
         </div>
 
         {error && (
@@ -126,4 +132,3 @@ export default function AdminPage() {
     </div>
   );
 }
-

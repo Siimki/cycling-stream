@@ -273,7 +273,7 @@ Get the current status of a race stream.
 }
 ```
 
-Status values: `planned`, `live`, `ended`, `offline`
+Status values: `live`, `offline`, `upcoming`
 
 ---
 

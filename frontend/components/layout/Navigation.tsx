@@ -118,12 +118,21 @@ export function Navigation({ variant = "full" }: NavigationProps) {
                     )}
                   </Button>
                 </Link>
-                <Button
-                  variant="ghost"
-                  className="text-xl font-semibold text-muted-foreground hover:text-foreground hover:bg-muted/30 h-12 px-5 py-3 transition-colors"
-                >
-                  Replays
-                </Button>
+                <Link href="/replays">
+                  <Button
+                    variant="ghost"
+                    className={`relative text-xl font-semibold h-12 px-5 py-3 transition-colors ${
+                      isActive('/replays')
+                        ? 'text-foreground'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-muted/30'
+                    }`}
+                  >
+                    Replays
+                    {isActive('/replays') && (
+                      <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full" />
+                    )}
+                  </Button>
+                </Link>
                 <Link href="/leaderboard">
                   <Button
                     variant="ghost"

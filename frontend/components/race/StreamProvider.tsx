@@ -36,10 +36,11 @@ export function StreamProvider({ raceId, requiresLogin, initialStream }: StreamP
         status={stream?.status || 'offline'}
         streamType={stream?.stream_type}
         sourceId={stream?.source_id}
+        streamId={stream?.stream_id}
+        provider={stream?.provider}
         requiresLogin={requiresLogin}
         raceId={raceId}
       />
     </>
   );
 }
-

@@ -15,6 +15,38 @@ func NewStreamRepository(db *sql.DB) *StreamRepository {
 	return &StreamRepository{db: db}
 }
 
+func (r *StreamRepository) GetByID(streamID string) (*models.Stream, error) {
+	query := `
+		SELECT id, race_id, status, stream_type, source_id, origin_url, cdn_url, stream_key, created_at, updated_at
+		FROM streams
+		WHERE id = $1
+		LIMIT 1
+	`
+
+	var stream models.Stream
+	err := r.db.QueryRow(query, streamID).Scan(
+		&stream.ID,
+		&stream.RaceID,
+		&stream.Status,
+		&stream.StreamType,
+		&stream.SourceID,
+		&stream.OriginURL,
+		&stream.CDNURL,
+		&stream.StreamKey,
+		&stream.CreatedAt,
+		&stream.UpdatedAt,
+	)
+
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to get stream by id: %w", err)
+	}
+
+	return &stream, nil
+}
+
 func (r *StreamRepository) GetByRaceID(raceID string) (*models.Stream, error) {
 	query := `
 		SELECT id, race_id, status, stream_type, source_id, origin_url, cdn_url, stream_key, created_at, updated_at
@@ -45,6 +77,46 @@ func (r *StreamRepository) GetByRaceID(raceID string) (*models.Stream, error) {
 	}
 
 	return &stream, nil
+}
+
+func (r *StreamRepository) GetAll() ([]models.Stream, error) {
+	query := `
+		SELECT id, race_id, status, stream_type, source_id, origin_url, cdn_url, stream_key, created_at, updated_at
+		FROM streams
+		ORDER BY created_at DESC
+	`
+
+	rows, err := r.db.Query(query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list streams: %w", err)
+	}
+	defer rows.Close()
+
+	var streams []models.Stream
+	for rows.Next() {
+		var s models.Stream
+		if err := rows.Scan(
+			&s.ID,
+			&s.RaceID,
+			&s.Status,
+			&s.StreamType,
+			&s.SourceID,
+			&s.OriginURL,
+			&s.CDNURL,
+			&s.StreamKey,
+			&s.CreatedAt,
+			&s.UpdatedAt,
+		); err != nil {
+			return nil, fmt.Errorf("scan stream: %w", err)
+		}
+		streams = append(streams, s)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate streams: %w", err)
+	}
+
+	return streams, nil
 }
 
 func (r *StreamRepository) CreateOrUpdate(stream *models.Stream) error {

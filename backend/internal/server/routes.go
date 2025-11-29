@@ -1,6 +1,8 @@
 package server
 
 import (
+	"log"
+
 	"github.com/cyclingstream/backend/internal/chat"
 	"github.com/cyclingstream/backend/internal/config"
 	"github.com/cyclingstream/backend/internal/database"
@@ -8,9 +10,9 @@ import (
 	"github.com/cyclingstream/backend/internal/middleware"
 	"github.com/cyclingstream/backend/internal/repository"
 	"github.com/cyclingstream/backend/internal/services"
+	"github.com/cyclingstream/backend/internal/services/analytics"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
-	"log"
 )
 
 func SetupRoutes(app *fiber.App, db *database.DB, cfg *config.Config, hub *chat.Hub, rateLimiter *chat.RateLimiter) {
@@ -41,6 +43,7 @@ func SetupRoutes(app *fiber.App, db *database.DB, cfg *config.Config, hub *chat.
 	// Initialize repositories
 	raceRepo := repository.NewRaceRepository(db.DB)
 	streamRepo := repository.NewStreamRepository(db.DB)
+	streamProviderRepo := repository.NewStreamProviderRepository(db.DB)
 	userRepo := repository.NewUserRepository(db.DB)
 	paymentRepo := repository.NewPaymentRepository(db.DB)
 	entitlementRepo := repository.NewEntitlementRepository(db.DB)
@@ -48,6 +51,9 @@ func SetupRoutes(app *fiber.App, db *database.DB, cfg *config.Config, hub *chat.
 	revenueRepo := repository.NewRevenueRepository(db.DB)
 	viewerSessionRepo := repository.NewViewerSessionRepository(db.DB)
 	costRepo := repository.NewCostRepository(db.DB)
+	playbackEventRepo := repository.NewPlaybackEventRepository(db.DB)
+	streamStatsRepo := repository.NewStreamStatsRepository(db.DB)
+	bunnyStatsRepo := repository.NewBunnyStatsRepository(db.DB)
 	chatRepo := repository.NewChatRepository(db.DB)
 	achievementRepo := repository.NewAchievementRepository(db.DB)
 	userPrefsRepo := repository.NewUserPreferencesRepository(db.DB)
@@ -69,6 +75,13 @@ func SetupRoutes(app *fiber.App, db *database.DB, cfg *config.Config, hub *chat.
 	missionTriggers := services.NewMissionTriggers(missionService, xpService, weeklyService, achievementService, cfg.XP)
 	predictionRepo := repository.NewPredictionRepository(db.DB)
 	predictionService := services.NewPredictionService(predictionRepo, userRepo, xpService, missionTriggers, cfg.XP)
+	analyticsAggregator := analytics.NewAggregator(playbackEventRepo, streamStatsRepo, streamRepo)
+	var bunnyImporter *analytics.BunnyImporter
+	bunnyEnabled := cfg.Bunny != nil && cfg.Bunny.APIKey != "" && cfg.Bunny.LibraryID != ""
+	if bunnyEnabled {
+		bunnyClient := analytics.NewBunnyClient(cfg.Bunny)
+		bunnyImporter = analytics.NewBunnyImporter(bunnyClient, streamProviderRepo, bunnyStatsRepo, streamStatsRepo)
+	}
 
 	// Initialize handlers
 	healthHandler := handlers.NewHealthHandler(db)
@@ -90,6 +103,12 @@ func SetupRoutes(app *fiber.App, db *database.DB, cfg *config.Config, hub *chat.
 		viewerSessionRepo,
 		watchSessionRepo,
 		revenueRepo,
+		streamRepo,
+		playbackEventRepo,
+		streamStatsRepo,
+		analyticsAggregator,
+		bunnyImporter,
+		bunnyEnabled,
 	)
 	costHandler := handlers.NewCostHandler(costRepo, raceRepo)
 	pollManager := chat.NewPollManager()
@@ -104,6 +123,7 @@ func SetupRoutes(app *fiber.App, db *database.DB, cfg *config.Config, hub *chat.
 	weeklyHandler := handlers.NewWeeklyHandler(weeklyService)
 	predictionsHandler := handlers.NewPredictionsHandler(predictionService)
 	achievementsHandler := handlers.NewAchievementsHandler(achievementService)
+	analyticsIngestionHandler := handlers.NewAnalyticsIngestionHandler(streamRepo, playbackEventRepo)
 
 	// Middleware instances
 	authMiddleware := middleware.AuthMiddleware(cfg.JWTSecret)
@@ -122,6 +142,7 @@ func SetupRoutes(app *fiber.App, db *database.DB, cfg *config.Config, hub *chat.
 	setupPredictionRoutes(app, predictionsHandler, optionalUserAuthMiddleware, userAuthMiddleware, csrfProtection)
 	setupWebhookRoutes(app, paymentHandler)
 	setupAdminRoutes(app, adminHandler, analyticsHandler, costHandler, authMiddleware, csrfProtection)
+	setupAnalyticsRoutes(app, analyticsIngestionHandler)
 }
 
 func setupPublicRoutes(app *fiber.App, healthHandler *handlers.HealthHandler, raceHandler *handlers.RaceHandler, userHandler *handlers.UserHandler, missionsHandler *handlers.MissionsHandler) {
@@ -268,6 +289,9 @@ func setupAdminRoutes(app *fiber.App, adminHandler *handlers.AdminHandler, analy
 	admin.Get("/analytics/races", analyticsHandler.GetRaceAnalytics)
 	admin.Get("/analytics/watch-time", analyticsHandler.GetWatchTimeAnalytics)
 	admin.Get("/analytics/revenue", analyticsHandler.GetRevenueAnalytics)
+	admin.Get("/analytics/streams", analyticsHandler.GetStreamAnalytics)
+	admin.Get("/analytics/streams/summary", analyticsHandler.GetStreamAnalyticsSummary)
+	admin.Post("/analytics/streams/bunny-sync", analyticsHandler.SyncBunnyAnalytics)
 
 	// Costs
 	admin.Post("/costs", costHandler.CreateCost)
@@ -277,4 +301,9 @@ func setupAdminRoutes(app *fiber.App, adminHandler *handlers.AdminHandler, analy
 	admin.Put("/costs/:id", costHandler.UpdateCost)
 	admin.Delete("/costs/:id", costHandler.DeleteCost)
 	admin.Get("/costs/races/:race_id", costHandler.GetCostsByRace)
+}
+
+func setupAnalyticsRoutes(app *fiber.App, analyticsHandler *handlers.AnalyticsIngestionHandler) {
+	analytics := app.Group("/analytics", middleware.LenientRateLimiter())
+	analytics.Post("/events", analyticsHandler.IngestEvents)
 }

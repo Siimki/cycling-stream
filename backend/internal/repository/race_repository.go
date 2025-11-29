@@ -17,11 +17,12 @@ func NewRaceRepository(db *sql.DB) *RaceRepository {
 
 func (r *RaceRepository) GetAll() ([]models.Race, error) {
 	query := `
-		SELECT id, name, description, start_date, end_date, location, category, 
-		       is_free, price_cents, requires_login, stage_name, stage_type, elevation_meters, 
-		       estimated_finish_time, stage_length_km, created_at, updated_at
-		FROM races
-		ORDER BY start_date DESC NULLS LAST, created_at DESC
+		SELECT r.id, r.name, r.description, r.start_date, r.end_date, r.location, r.category, 
+		       r.is_free, r.price_cents, r.requires_login, r.stage_name, r.stage_type, r.elevation_meters, 
+		       r.estimated_finish_time, r.stage_length_km, r.created_at, r.updated_at, s.status AS stream_status
+		FROM races r
+		LEFT JOIN streams s ON r.id = s.race_id
+		ORDER BY r.start_date DESC NULLS LAST, r.created_at DESC
 	`
 
 	rows, err := r.db.Query(query)
@@ -51,6 +52,7 @@ func (r *RaceRepository) GetAll() ([]models.Race, error) {
 			&race.StageLengthKm,
 			&race.CreatedAt,
 			&race.UpdatedAt,
+			&race.StreamStatus,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan race: %w", err)

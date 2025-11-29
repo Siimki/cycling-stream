@@ -1,7 +1,9 @@
 package handlers
 
 import (
+	"context"
 	"strconv"
+	"time"
 
 	"github.com/cyclingstream/backend/internal/models"
 	"github.com/cyclingstream/backend/internal/repository"
@@ -13,6 +15,20 @@ type AnalyticsHandler struct {
 	viewerSessionRepo *repository.ViewerSessionRepository
 	watchSessionRepo  *repository.WatchSessionRepository
 	revenueRepo       *repository.RevenueRepository
+	streamRepo        *repository.StreamRepository
+	playbackRepo      *repository.PlaybackEventRepository
+	statsRepo         *repository.StreamStatsRepository
+	aggregator        AnalyticsAggregator
+	bunnyImporter     BunnyImporter
+	bunnyEnabled      bool
+}
+
+type AnalyticsAggregator interface {
+	AggregateStream(ctx context.Context, streamID string, since *time.Time) (*models.StreamStats, error)
+}
+
+type BunnyImporter interface {
+	Sync(ctx context.Context) (int, error)
 }
 
 func NewAnalyticsHandler(
@@ -20,12 +36,24 @@ func NewAnalyticsHandler(
 	viewerSessionRepo *repository.ViewerSessionRepository,
 	watchSessionRepo *repository.WatchSessionRepository,
 	revenueRepo *repository.RevenueRepository,
+	streamRepo *repository.StreamRepository,
+	playbackRepo *repository.PlaybackEventRepository,
+	statsRepo *repository.StreamStatsRepository,
+	aggregator AnalyticsAggregator,
+	bunnyImporter BunnyImporter,
+	bunnyEnabled bool,
 ) *AnalyticsHandler {
 	return &AnalyticsHandler{
 		raceRepo:          raceRepo,
 		viewerSessionRepo: viewerSessionRepo,
 		watchSessionRepo:  watchSessionRepo,
 		revenueRepo:       revenueRepo,
+		streamRepo:        streamRepo,
+		playbackRepo:      playbackRepo,
+		statsRepo:         statsRepo,
+		aggregator:        aggregator,
+		bunnyImporter:     bunnyImporter,
+		bunnyEnabled:      bunnyEnabled,
 	}
 }
 
@@ -69,14 +97,14 @@ func (h *AnalyticsHandler) GetRaceAnalytics(c *fiber.Ctx) error {
 
 	// Build response with race information
 	type RaceAnalytics struct {
-		RaceID                string `json:"race_id"`
-		RaceName              string `json:"race_name"`
-		ConcurrentViewers     int    `json:"concurrent_viewers"`
-		AuthenticatedViewers  int    `json:"authenticated_viewers"`
-		AnonymousViewers      int    `json:"anonymous_viewers"`
-		UniqueViewers         int    `json:"unique_viewers"`
-		UniqueAuthenticated   int    `json:"unique_authenticated"`
-		UniqueAnonymous       int    `json:"unique_anonymous"`
+		RaceID               string `json:"race_id"`
+		RaceName             string `json:"race_name"`
+		ConcurrentViewers    int    `json:"concurrent_viewers"`
+		AuthenticatedViewers int    `json:"authenticated_viewers"`
+		AnonymousViewers     int    `json:"anonymous_viewers"`
+		UniqueViewers        int    `json:"unique_viewers"`
+		UniqueAuthenticated  int    `json:"unique_authenticated"`
+		UniqueAnonymous      int    `json:"unique_anonymous"`
 	}
 
 	var analytics []RaceAnalytics
@@ -185,3 +213,67 @@ func (h *AnalyticsHandler) GetRevenueAnalytics(c *fiber.Ctx) error {
 	})
 }
 
+// GetStreamAnalytics computes per-stream metrics (overall) from playback events.
+func (h *AnalyticsHandler) GetStreamAnalytics(c *fiber.Ctx) error {
+	streamID := c.Query("stream_id")
+	var since *time.Time
+	if sinceStr := c.Query("since"); sinceStr != "" {
+		if t, err := time.Parse(time.RFC3339, sinceStr); err == nil {
+			since = &t
+		}
+	}
+
+	// If no specific stream is requested, aggregate for all streams with events.
+	if streamID == "" {
+		streams, err := h.streamRepo.GetAll()
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(APIError{Error: "failed to load streams"})
+		}
+
+		results := make([]models.StreamStats, 0, len(streams))
+		for _, s := range streams {
+			stats, err := h.aggregator.AggregateStream(c.Context(), s.ID, since)
+			if err != nil {
+				// skip streams with no events or transient errors, but keep going
+				continue
+			}
+			results = append(results, *stats)
+		}
+
+		return c.Status(fiber.StatusOK).JSON(fiber.Map{
+			"data": results,
+		})
+	}
+
+	stats, err := h.aggregator.AggregateStream(c.Context(), streamID, since)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(APIError{Error: err.Error()})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(stats)
+}
+
+// GetStreamAnalyticsSummary returns a summary across all streams.
+func (h *AnalyticsHandler) GetStreamAnalyticsSummary(c *fiber.Ctx) error {
+	summary, err := h.statsRepo.Summary(c.Context())
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(APIError{Error: "failed to load stream analytics summary"})
+	}
+	return c.Status(fiber.StatusOK).JSON(summary)
+}
+
+// SyncBunnyAnalytics triggers a pull from Bunny API for bunny_stream providers.
+func (h *AnalyticsHandler) SyncBunnyAnalytics(c *fiber.Ctx) error {
+	if !h.bunnyEnabled || h.bunnyImporter == nil {
+		return c.Status(fiber.StatusNotImplemented).JSON(APIError{Error: "Bunny integration not configured"})
+	}
+
+	count, err := h.bunnyImporter.Sync(c.Context())
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(APIError{Error: err.Error()})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"synced": count,
+	})
+}

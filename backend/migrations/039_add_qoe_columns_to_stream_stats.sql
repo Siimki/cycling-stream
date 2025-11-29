@@ -1,0 +1,5 @@
+-- QoE metrics on stream_stats.
+ALTER TABLE stream_stats
+    ADD COLUMN IF NOT EXISTS buffer_seconds BIGINT DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS buffer_ratio DOUBLE PRECISION DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS error_rate DOUBLE PRECISION DEFAULT 0;

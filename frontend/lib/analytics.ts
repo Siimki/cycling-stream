@@ -40,6 +40,26 @@ export interface RevenueAnalytics {
   updated_at: string;
 }
 
+export interface StreamAnalytics {
+  stream_id: string;
+  unique_viewers: number;
+  total_watch_seconds: number;
+  avg_watch_seconds: number;
+  peak_concurrent_viewers: number;
+  buffer_seconds?: number;
+  buffer_ratio?: number;
+  error_rate?: number;
+  top_countries?: Record<string, number>;
+  device_breakdown?: Record<string, number>;
+}
+
+export interface StreamAnalyticsSummary {
+  stream_count: number;
+  total_unique_viewers: number;
+  total_watch_seconds: number;
+  avg_peak_concurrent: number;
+}
+
 async function fetchAPI<T>(endpoint: string, options?: RequestInit): Promise<T> {
   const token = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
   
@@ -92,6 +112,14 @@ export async function getRevenueAnalytics(year?: number, month?: number): Promis
   return fetchAPI<RevenueAnalytics[]>(endpoint);
 }
 
+export async function getStreamAnalytics(): Promise<StreamAnalytics[]> {
+  return fetchAPI<StreamAnalytics[]>('/admin/analytics/streams');
+}
+
+export async function getStreamAnalyticsSummary(): Promise<StreamAnalyticsSummary> {
+  return fetchAPI<StreamAnalyticsSummary>('/admin/analytics/streams/summary');
+}
+
 // Export functions for CSV/JSON
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function exportToCSV<T extends Record<string, any>>(data: T[], filename: string): void {
@@ -140,4 +168,3 @@ export function exportToJSON<T>(data: T[], filename: string): void {
   link.click();
   document.body.removeChild(link);
 }
-

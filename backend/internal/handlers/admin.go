@@ -25,20 +25,20 @@ func NewAdminHandler(raceRepo *repository.RaceRepository, streamRepo *repository
 }
 
 type CreateRaceRequest struct {
-	Name               string     `json:"name"`
-	Description        *string    `json:"description"`
-	StartDate          *time.Time `json:"start_date"`
-	EndDate            *time.Time `json:"end_date"`
-	Location           *string    `json:"location"`
-	Category           *string    `json:"category"`
-	IsFree             bool       `json:"is_free"`
-	PriceCents         int        `json:"price_cents"`
-	RequiresLogin      *bool      `json:"requires_login"`
-	StageName          *string    `json:"stage_name"`
-	StageType          *string    `json:"stage_type"`
-	ElevationMeters    *int       `json:"elevation_meters"`
-	EstimatedFinishTime *string   `json:"estimated_finish_time"`
-	StageLengthKm      *int       `json:"stage_length_km"`
+	Name                string     `json:"name"`
+	Description         *string    `json:"description"`
+	StartDate           *time.Time `json:"start_date"`
+	EndDate             *time.Time `json:"end_date"`
+	Location            *string    `json:"location"`
+	Category            *string    `json:"category"`
+	IsFree              bool       `json:"is_free"`
+	PriceCents          int        `json:"price_cents"`
+	RequiresLogin       *bool      `json:"requires_login"`
+	StageName           *string    `json:"stage_name"`
+	StageType           *string    `json:"stage_type"`
+	ElevationMeters     *int       `json:"elevation_meters"`
+	EstimatedFinishTime *string    `json:"estimated_finish_time"`
+	StageLengthKm       *int       `json:"stage_length_km"`
 }
 
 func (h *AdminHandler) CreateRace(c *fiber.Ctx) error {
@@ -113,20 +113,20 @@ func (h *AdminHandler) CreateRace(c *fiber.Ctx) error {
 	}
 
 	race := &models.Race{
-		Name:               req.Name,
-		Description:        req.Description,
-		StartDate:          req.StartDate,
-		EndDate:            req.EndDate,
-		Location:           req.Location,
-		Category:           req.Category,
-		IsFree:             req.IsFree,
-		PriceCents:         req.PriceCents,
-		RequiresLogin:      requiresLogin,
-		StageName:          req.StageName,
-		StageType:          req.StageType,
-		ElevationMeters:    req.ElevationMeters,
+		Name:                req.Name,
+		Description:         req.Description,
+		StartDate:           req.StartDate,
+		EndDate:             req.EndDate,
+		Location:            req.Location,
+		Category:            req.Category,
+		IsFree:              req.IsFree,
+		PriceCents:          req.PriceCents,
+		RequiresLogin:       requiresLogin,
+		StageName:           req.StageName,
+		StageType:           req.StageType,
+		ElevationMeters:     req.ElevationMeters,
 		EstimatedFinishTime: req.EstimatedFinishTime,
-		StageLengthKm:      req.StageLengthKm,
+		StageLengthKm:       req.StageLengthKm,
 	}
 
 	if err := h.raceRepo.Create(race); err != nil {
@@ -225,21 +225,21 @@ func (h *AdminHandler) UpdateRace(c *fiber.Ctx) error {
 	}
 
 	race := &models.Race{
-		ID:                 id,
-		Name:               req.Name,
-		Description:        req.Description,
-		StartDate:          req.StartDate,
-		EndDate:            req.EndDate,
-		Location:           req.Location,
-		Category:           req.Category,
-		IsFree:             req.IsFree,
-		PriceCents:         req.PriceCents,
-		RequiresLogin:      requiresLogin,
-		StageName:          req.StageName,
-		StageType:          req.StageType,
-		ElevationMeters:    req.ElevationMeters,
+		ID:                  id,
+		Name:                req.Name,
+		Description:         req.Description,
+		StartDate:           req.StartDate,
+		EndDate:             req.EndDate,
+		Location:            req.Location,
+		Category:            req.Category,
+		IsFree:              req.IsFree,
+		PriceCents:          req.PriceCents,
+		RequiresLogin:       requiresLogin,
+		StageName:           req.StageName,
+		StageType:           req.StageType,
+		ElevationMeters:     req.ElevationMeters,
 		EstimatedFinishTime: req.EstimatedFinishTime,
-		StageLengthKm:      req.StageLengthKm,
+		StageLengthKm:       req.StageLengthKm,
 	}
 
 	if err := h.raceRepo.Update(race); err != nil {
@@ -310,13 +310,13 @@ func (h *AdminHandler) UpdateStream(c *fiber.Ctx) error {
 
 	// Validate status
 	validStatuses := map[string]bool{
-		"offline": true,
-		"live":    true,
-		"ended":   true,
+		"offline":  true,
+		"live":     true,
+		"upcoming": true,
 	}
 	if !validStatuses[req.Status] {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "Invalid status. Must be one of: offline, live, ended",
+			"error": "Invalid status. Must be one of: offline, live, upcoming",
 		})
 	}
 
@@ -398,13 +398,13 @@ func (h *AdminHandler) UpdateStreamStatus(c *fiber.Ctx) error {
 
 	// Validate status
 	validStatuses := map[string]bool{
-		"offline": true,
-		"live":    true,
-		"ended":   true,
+		"offline":  true,
+		"live":     true,
+		"upcoming": true,
 	}
 	if !validStatuses[req.Status] {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "Invalid status. Must be one of: offline, live, ended",
+			"error": "Invalid status. Must be one of: offline, live, upcoming",
 		})
 	}
 
@@ -559,4 +559,3 @@ func (h *AdminHandler) RecalculateRevenueForPeriod(c *fiber.Ctx) error {
 		"message": "Revenue data recalculated successfully",
 	})
 }
-

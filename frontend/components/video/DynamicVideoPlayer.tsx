@@ -12,11 +12,23 @@ interface DynamicVideoPlayerProps {
   status: string;
   streamType?: string;
   sourceId?: string;
+  streamId?: string;
+  provider?: string;
   requiresLogin?: boolean;
   raceId?: string;
 }
 
-export default function DynamicVideoPlayer({ streamUrl, status, streamType, sourceId, requiresLogin, raceId }: DynamicVideoPlayerProps) {
-  return <VideoPlayer streamUrl={streamUrl} status={status} streamType={streamType} sourceId={sourceId} requiresLogin={requiresLogin} raceId={raceId} />;
+export default function DynamicVideoPlayer({ streamUrl, status, streamType, sourceId, streamId, provider, requiresLogin, raceId }: DynamicVideoPlayerProps) {
+  return (
+    <VideoPlayer
+      streamUrl={streamUrl}
+      status={status}
+      streamType={streamType}
+      sourceId={sourceId}
+      streamId={streamId}
+      provider={provider}
+      requiresLogin={requiresLogin}
+      raceId={raceId}
+    />
+  );
 }
-

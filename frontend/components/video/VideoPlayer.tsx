@@ -6,21 +6,26 @@ import { useVideoKeyboardShortcuts } from '@/hooks/useVideoKeyboardShortcuts';
 import { VideoOverlay } from './VideoOverlay';
 import { VideoControls } from './VideoControls';
 import { VIDEO_CONTROLS_HIDE_DELAY_MS } from '@/constants/intervals';
+import { useAnalyticsTracking } from '@/hooks/useAnalyticsTracking';
 
 interface VideoPlayerProps {
   streamUrl?: string;
   status: string;
   streamType?: string;
   sourceId?: string;
+  streamId?: string;
+  provider?: string;
   requiresLogin?: boolean; // Kept for backward compatibility but not used
   raceId?: string;
 }
 
-export default function VideoPlayer({ streamUrl, status, streamType, sourceId, raceId }: VideoPlayerProps) {
+export default function VideoPlayer({ streamUrl, status, streamType, sourceId, streamId }: VideoPlayerProps) {
   const [showControls, setShowControls] = useState(false);
   const [showQualityMenu, setShowQualityMenu] = useState(false);
   const [showSpeedMenu, setShowSpeedMenu] = useState(false);
   const controlsTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastErrorRef = useRef<string | null>(null);
+  const lastBufferingRef = useRef<boolean>(false);
 
   const {
     videoRef,
@@ -41,6 +46,12 @@ export default function VideoPlayer({ streamUrl, status, streamType, sourceId, r
     handleQualityChange,
     toggleFullscreen,
   } = useVideoPlayer(streamUrl, status);
+
+  const { trackPlay, trackPause, trackHeartbeat, trackEnded, trackError, trackBufferStart, trackBufferEnd } =
+    useAnalyticsTracking(streamId);
+  const isYouTube = status === 'live' && streamType === 'youtube' && !!sourceId;
+  // Check if this is a Bunny Stream embed (for replays)
+  const isBunnyStream = streamUrl && streamUrl.includes('mediadelivery.net');
 
   // Keyboard shortcuts - must be called before any conditional returns
   useVideoKeyboardShortcuts({
@@ -103,8 +114,85 @@ export default function VideoPlayer({ streamUrl, status, streamType, sourceId, r
     setShowSpeedMenu(false);
   }, []);
 
+  // Fire tracking events for YouTube (limited without iframe API)
+  useEffect(() => {
+    if (!isYouTube || !streamId) return;
+    trackPlay(0);
+    const interval = window.setInterval(() => {
+      trackHeartbeat();
+    }, 15000);
+    return () => {
+      window.clearInterval(interval);
+    };
+  }, [isYouTube, streamId, trackHeartbeat, trackPlay]);
+
+  // Send errors once per occurrence
+  useEffect(() => {
+    if (!streamId || !error) return;
+    if (error === lastErrorRef.current) return;
+    lastErrorRef.current = error;
+    trackError(undefined, { message: error });
+  }, [error, streamId, trackError]);
+
+  // Hook up HTML5 video events for analytics
+  useEffect(() => {
+    const videoEl = videoRef.current;
+    if (!videoEl || !streamId || isYouTube) {
+      return;
+    }
+
+    const handlePlay = () => trackPlay(Math.floor(videoEl.currentTime || 0));
+    const handlePause = () => trackPause(Math.floor(videoEl.currentTime || 0));
+    const handleEnded = () => trackEnded(Math.floor(videoEl.currentTime || 0));
+    const handleError = () => trackError(Math.floor(videoEl.currentTime || 0), { message: 'video_error' });
+
+    videoEl.addEventListener('play', handlePlay);
+    videoEl.addEventListener('pause', handlePause);
+    videoEl.addEventListener('ended', handleEnded);
+    videoEl.addEventListener('error', handleError);
+
+    return () => {
+      videoEl.removeEventListener('play', handlePlay);
+      videoEl.removeEventListener('pause', handlePause);
+      videoEl.removeEventListener('ended', handleEnded);
+      videoEl.removeEventListener('error', handleError);
+    };
+  }, [isYouTube, streamId, trackEnded, trackError, trackPause, trackPlay, videoRef]);
+
+  // Heartbeat loop for HTML5 playback
+  useEffect(() => {
+    if (!streamId || isYouTube) return;
+    const interval = window.setInterval(() => {
+      const videoEl = videoRef.current;
+      if (!videoEl || videoEl.paused || status !== 'live') {
+        return;
+      }
+      trackHeartbeat(Math.floor(videoEl.currentTime || 0));
+    }, 15000);
+
+    return () => {
+      window.clearInterval(interval);
+    };
+  }, [isYouTube, status, streamId, trackHeartbeat, videoRef]);
+
+  // Buffer tracking for HTML5 playback
+  useEffect(() => {
+    if (!streamId || isYouTube) return;
+    const videoEl = videoRef.current;
+    const wasBuffering = lastBufferingRef.current;
+    if (isBuffering && !wasBuffering) {
+      const position = Math.floor(videoEl?.currentTime || 0);
+      trackBufferStart(position);
+    }
+    if (!isBuffering && wasBuffering) {
+      const position = Math.floor(videoEl?.currentTime || 0);
+      trackBufferEnd(position);
+    }
+    lastBufferingRef.current = isBuffering;
+  }, [isBuffering, isYouTube, streamId, trackBufferStart, trackBufferEnd, videoRef]);
+
   // YouTube Player
-  if (status === 'live' && streamType === 'youtube' && sourceId) {
+  if (isYouTube && sourceId) {
     return (
       <div className="aspect-video w-full h-full bg-black rounded-lg overflow-hidden border border-border/50 shadow-lg shadow-black/20">
          <iframe
@@ -121,21 +209,49 @@ export default function VideoPlayer({ streamUrl, status, streamType, sourceId, r
     );
   }
 
-  if (status !== 'live' || !streamUrl) {
-    // Note: Authentication checks are handled by AuthRequiredWrapper
-    // This component only shows the stream or offline message
+  // Bunny Stream Player (for replays/embeds)
+  if (isBunnyStream && streamUrl) {
+    // Extract the embed URL - if it's already a full URL, use it directly
+    // Otherwise construct it from sourceId if available
+    let embedUrl = streamUrl;
+    
+    // If the URL contains query parameters, ensure they're included
+    // The embed URL should already be complete from the backend
     return (
-      <div className="bg-card aspect-video flex items-center justify-center rounded-lg relative overflow-hidden border border-border/50 shadow-lg shadow-black/20">
-        <div className="absolute inset-0 bg-gradient-to-br from-background to-card"></div>
-        <div className="relative text-center text-foreground z-10 px-4">
-          <div className="text-6xl mb-4">📺</div>
-          <p className="text-2xl font-semibold mb-2">Stream Offline</p>
-          <p className="text-muted-foreground">
-            The stream is not currently available. Please check back later.
-          </p>
+      <div className="aspect-video w-full h-full bg-black rounded-lg overflow-hidden border border-border/50 shadow-lg shadow-black/20">
+        <div style={{ position: 'relative', paddingTop: '56.25%' }}>
+          <iframe
+            src={embedUrl}
+            loading="lazy"
+            style={{ border: 0, position: 'absolute', top: 0, height: '100%', width: '100%' }}
+            allow="accelerometer;gyroscope;autoplay;encrypted-media;picture-in-picture;"
+            allowFullScreen={true}
+            title="Bunny Stream video player"
+            className="w-full h-full"
+          ></iframe>
         </div>
       </div>
     );
+  }
+
+  if (status !== 'live' || !streamUrl) {
+    // Note: Authentication checks are handled by AuthRequiredWrapper
+    // This component only shows the stream or offline message
+    // Only show offline if it's not a Bunny Stream embed
+    if (!isBunnyStream) {
+      return (
+        <div className="bg-card aspect-video flex items-center justify-center rounded-lg relative overflow-hidden border border-border/50 shadow-lg shadow-black/20">
+          <div className="absolute inset-0 bg-gradient-to-br from-background to-card"></div>
+          <div className="relative text-center text-foreground z-10 px-4">
+            <div className="text-6xl mb-4">📺</div>
+            <p className="text-2xl font-semibold mb-2">Stream Offline</p>
+            <p className="text-muted-foreground">
+              The stream is not currently available. Please check back later.
+            </p>
+          </div>
+        </div>
+      );
+    }
   }
 
   if (error) {

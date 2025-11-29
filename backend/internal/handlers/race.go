@@ -7,8 +7,8 @@ import (
 )
 
 type RaceHandler struct {
-	raceRepo       *repository.RaceRepository
-	streamRepo     *repository.StreamRepository
+	raceRepo        *repository.RaceRepository
+	streamRepo      *repository.StreamRepository
 	entitlementRepo *repository.EntitlementRepository
 }
 
@@ -73,14 +73,14 @@ func (h *RaceHandler) GetRaceStream(c *fiber.Ctx) error {
 	}
 
 	// Check if user has access (if race is paid)
-		if !race.IsFree {
-			userID, ok := c.Locals("user_id").(string)
-			if !ok || userID == "" {
-				return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-					"error":            "Authentication required",
-					"requires_payment": true,
-				})
-			}
+	if !race.IsFree {
+		userID, ok := c.Locals("user_id").(string)
+		if !ok || userID == "" {
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+				"error":            "Authentication required",
+				"requires_payment": true,
+			})
+		}
 
 		hasAccess, err := h.entitlementRepo.HasAccess(userID, id)
 		if err != nil {
@@ -91,7 +91,7 @@ func (h *RaceHandler) GetRaceStream(c *fiber.Ctx) error {
 
 		if !hasAccess {
 			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
-				"error": "Payment required to access this race",
+				"error":            "Payment required to access this race",
 				"requires_payment": true,
 			})
 		}
@@ -105,8 +105,10 @@ func (h *RaceHandler) GetRaceStream(c *fiber.Ctx) error {
 
 	// Return stream info (prefer CDN URL if available)
 	response := fiber.Map{
+		"stream_id":   stream.ID,
 		"status":      stream.Status,
 		"stream_type": stream.StreamType,
+		"provider":    stream.StreamType,
 		"source_id":   stream.SourceID,
 	}
 
@@ -118,4 +120,3 @@ func (h *RaceHandler) GetRaceStream(c *fiber.Ctx) error {
 
 	return c.Status(fiber.StatusOK).JSON(response)
 }
-

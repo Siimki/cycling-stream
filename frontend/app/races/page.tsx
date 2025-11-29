@@ -1,9 +1,13 @@
-import { getRaces, Race } from '@/lib/api';
-import { APIErrorHandler } from '@/lib/error-handler';
-import RaceCard from '@/components/race/RaceCard';
-import ErrorMessage from '@/components/ErrorMessage';
+import Link from 'next/link';
+
 import { Navigation } from '@/components/layout/Navigation';
 import Footer from '@/components/layout/Footer';
+import ErrorMessage from '@/components/ErrorMessage';
+import RaceCard from '@/components/race/RaceCard';
+import { Button } from '@/components/ui/button';
+import { getRaces, Race } from '@/lib/api';
+import { APIErrorHandler } from '@/lib/error-handler';
+import { isRaceUpcomingOrLive } from '@/lib/raceFilters';
 
 export const metadata = {
   title: 'Races | PelotonLive',
@@ -22,6 +26,8 @@ export default async function RacesPage() {
     races = [];
   }
 
+  const upcomingAndLive = races.filter((race) => isRaceUpcomingOrLive(race));
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <Navigation variant="full" />
@@ -29,20 +35,25 @@ export default async function RacesPage() {
         <div className="mb-8">
           <h1 className="text-3xl sm:text-4xl font-bold text-foreground mb-2">All Races</h1>
           <p className="text-muted-foreground text-base sm:text-lg">
-            Browse all cycling races available on PelotonLive
+            Browse live and upcoming races. Finished events are now in Replays.
           </p>
         </div>
 
         {error ? (
           <ErrorMessage message={error} />
-        ) : !races || races.length === 0 ? (
+        ) : !upcomingAndLive || upcomingAndLive.length === 0 ? (
           <div className="text-center py-12 px-4">
-            <p className="text-muted-foreground text-base sm:text-lg">No races available at the moment.</p>
-            <p className="text-muted-foreground/70 mt-2 text-sm sm:text-base">Check back soon for upcoming events!</p>
+            <p className="text-muted-foreground text-base sm:text-lg">No live or upcoming races right now.</p>
+            <p className="text-muted-foreground/70 mt-2 text-sm sm:text-base">Replays are available while new events are scheduled.</p>
+            <div className="mt-6 flex justify-center">
+              <Link href="/replays">
+                <Button>View replays</Button>
+              </Link>
+            </div>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-            {races.map((race) => (
+            {upcomingAndLive.map((race) => (
               <RaceCard key={race.id} race={race} />
             ))}
           </div>
@@ -52,4 +63,3 @@ export default async function RacesPage() {
     </div>
   );
 }
-
