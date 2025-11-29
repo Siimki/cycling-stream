@@ -82,11 +82,11 @@ export const VideoControls = memo(function VideoControls({
 
   return (
     <div
-      className={`absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 via-black/45 to-transparent backdrop-blur-md border-t border-white/10 transition-opacity duration-200 ${
+      className={`absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/35 to-transparent backdrop-blur-sm border-t border-white/10 transition-opacity duration-200 ${
         showControls ? 'opacity-100' : 'opacity-0'
       }`}
     >
-      <div className="p-3 sm:p-4 flex flex-col gap-3">
+      <div className="px-2 sm:px-3 pt-1.5 pb-2 flex flex-col gap-2 sm:gap-2.5">
         <div className="flex items-center gap-3">
           <div className="flex-1">
             {isLive || !duration ? (
@@ -94,7 +94,7 @@ export const VideoControls = memo(function VideoControls({
                 <div className="flex-1 h-1.5 bg-white/15 rounded-full overflow-hidden">
                   <div className="h-full bg-primary w-full animate-pulse" />
                 </div>
-                <div className="flex items-center gap-2 text-xs sm:text-sm text-white/90 font-mono">
+                <div className="flex items-center gap-2 text-[11px] sm:text-xs text-white/90 font-mono">
                   <span className="px-2.5 py-1 rounded-full bg-primary text-white text-xs sm:text-sm font-semibold leading-tight">
                     LIVE
                   </span>
@@ -123,7 +123,7 @@ export const VideoControls = memo(function VideoControls({
             <Button
               variant="ghost"
               size="icon"
-              className="text-white hover:bg-white/10 w-9 h-9 sm:w-10 sm:h-10"
+              className="text-white hover:bg-white/10 w-[2.125rem] h-[2.125rem] sm:w-9 sm:h-9"
               onClick={onTogglePlay}
             >
               {isPlaying ? <Pause className="w-5 h-5 sm:w-6 sm:h-6" /> : <Play className="w-5 h-5 sm:w-6 sm:h-6" />}
@@ -133,7 +133,7 @@ export const VideoControls = memo(function VideoControls({
               <Button
                 variant="ghost"
                 size="icon"
-                className="text-white hover:bg-white/10 w-9 h-9 sm:w-10 sm:h-10"
+                className="text-white hover:bg-white/10 w-[2.125rem] h-[2.125rem] sm:w-9 sm:h-9"
                 onClick={onToggleMute}
               >
                 {isMuted ? <VolumeX className="w-5 h-5 sm:w-6 sm:h-6" /> : <Volume2 className="w-5 h-5 sm:w-6 sm:h-6" />}
@@ -160,7 +160,7 @@ export const VideoControls = memo(function VideoControls({
               <Button
                 variant="ghost"
                 size="icon"
-                className="text-white hover:bg-white/10 w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center"
+                className="text-white hover:bg-white/10 w-[2.125rem] h-[2.125rem] sm:w-9 sm:h-9 flex items-center justify-center"
                 onClick={onToggleSettingsMenu}
                 >
                 <Settings className="w-5 h-5 sm:w-6 sm:h-6" />
