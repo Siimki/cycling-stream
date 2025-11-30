@@ -112,9 +112,9 @@ export function HomeDashboard({ liveRacesCount = 0 }: HomeDashboardProps) {
   }
 
   // Calculate stats
-  const watchTimeMinutes = watchHistory?.entries.reduce((sum, entry) => sum + entry.total_minutes, 0) || 0;
+  const watchTimeMinutes = (watchHistory?.entries ?? []).reduce((sum, entry) => sum + entry.total_minutes, 0) || 0;
   const watchTimeHours = Math.floor(watchTimeMinutes / 60);
-  const racesWatchedCount = watchHistory?.entries.length || 0;
+  const racesWatchedCount = (watchHistory?.entries ?? []).length || 0;
   
   // Calculate streak from weekly data
   const streakDays = weeklyData?.current_streak_weeks ? weeklyData.current_streak_weeks * 7 : 0;

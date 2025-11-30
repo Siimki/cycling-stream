@@ -3,6 +3,7 @@ package handlers
 import (
 	"strconv"
 
+	"github.com/cyclingstream/backend/internal/models"
 	"github.com/cyclingstream/backend/internal/repository"
 	"github.com/gofiber/fiber/v2"
 )
@@ -44,6 +45,11 @@ func (h *WatchHistoryHandler) GetWatchHistory(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(APIError{
 			Error: "Failed to fetch watch history",
 		})
+	}
+
+	// Ensure entries is always a non-nil slice (empty array in JSON, not null)
+	if entries == nil {
+		entries = []*models.WatchHistoryEntry{}
 	}
 
 	total, err := h.historyRepo.GetCountByUserID(userID)
