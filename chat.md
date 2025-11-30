@@ -1,0 +1,7 @@
+# Real-Time Chat Summary
+
+- **What it does:** Live race chat over WebSocket (`ws://{API_URL}/races/{raceId}/chat/ws`) with optional JWT query param for authenticated roles/badges. Anonymous users can read; sending messages requires auth (server enforces).
+- **Client flow:** `useChat` (frontend/hooks/useChat.ts) opens the socket when chat is enabled, sends keepalive pings every 30s, merges history from `GET /races/:id/chat/history`, and batches JSON frames split by newline. It auto-reconnects with a stepped backoff (3s, 5s, 10s, 30s; stops after 4 attempts) and clears state on user switch.
+- **Server flow:** `ChatHandler.HandleWebSocket` (backend/internal/handlers/chat.go) validates race + live stream, joins a per-race room in the hub, broadcasts joins/leaves, persists messages, and applies role/badge metadata. Rate limiting is per user (`chat/ratelimit.go`).
+- **Polls & UI:** WebSocket carries `poll_announcement`, `poll_update`, and `poll_closed` messages; `ChatPollCard` renders them with vote progress and CTA. Sounds and animations respect user experience settings (ExperienceContext).
+- **Known gaps:** Users report disconnects roughly ~10s after connect; investigate server close codes/reasons (network tab), stream status gating (`live` required), and auth token expiry. Current retry stops after 4 attempts—consider exponential retry with cap and clearer UI messaging if disconnect persists.

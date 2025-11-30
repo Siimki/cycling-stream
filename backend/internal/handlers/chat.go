@@ -179,6 +179,19 @@ func (h *ChatHandler) HandleWebSocket(c *fiber.Ctx) error {
 
 // handleSendMessage processes a send_message request
 func (h *ChatHandler) handleSendMessage(client *chat.Client, raceID string, msg *chat.WSMessage, userID *string, username string, user *models.User) {
+	// Defensive: ensure raceID is a valid UUID before touching the DB
+	if _, err := uuid.Parse(raceID); err != nil {
+		logger.WithFields(map[string]interface{}{
+			"race_id": raceID,
+			"user_id": userID,
+		}).Warn("Rejected chat message with invalid race_id")
+		errorMsg := chat.NewErrorWSMessage("Invalid race")
+		if errorBytes, marshalErr := json.Marshal(errorMsg); marshalErr == nil {
+			client.SendMessage(errorBytes)
+		}
+		return
+	}
+
 	// Anonymous users cannot send messages
 	if userID == nil {
 		errorMsg := chat.NewErrorWSMessage("Authentication required to send messages")

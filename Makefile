@@ -168,3 +168,22 @@ setup: ## Initial setup (install dependencies)
 	@cd frontend && npm install
 	@echo "Setup complete!"
 
+backup-db: ## Backup the database
+	@echo "Backing up database..."
+	@chmod +x scripts/backup-db.sh
+	@./scripts/backup-db.sh
+
+validate-schema: ## Validate database schema against code expectations
+	@echo "Validating database schema..."
+	@chmod +x scripts/validate-schema.sh
+	@./scripts/validate-schema.sh
+
+inspect-db: ## Inspect database tables and schema
+	@echo "Inspecting database..."
+	@chmod +x scripts/inspect-db.sh
+	@./scripts/inspect-db.sh
+
+fix-schema: ## Attempt to fix database schema issues
+	@echo "Fixing database schema..."
+	@chmod +x scripts/fix-schema.sh
+	@./scripts/fix-schema.sh

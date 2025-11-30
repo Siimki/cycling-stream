@@ -29,6 +29,10 @@ interface UseChatReturn {
   pollVoteLoading: boolean;
 }
 
+function isUUID(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
 export function useChat(raceId: string, enabled: boolean): UseChatReturn {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isConnected, setIsConnected] = useState(false);
@@ -109,6 +113,13 @@ export function useChat(raceId: string, enabled: boolean): UseChatReturn {
 
   useEffect(() => {
     if (!enabled || !raceId) {
+      return;
+    }
+
+    // Avoid opening sockets with an invalid raceId; surface a clear error instead of looping failures
+    if (!isUUID(raceId)) {
+      setIsConnected(false);
+      setChatError('Invalid race ID');
       return;
     }
 
