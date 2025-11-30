@@ -5,7 +5,7 @@ import { motion as motionTokensFromDesign } from '@/constants/design-tokens';
 export const motionTokens = motionTokensFromDesign;
 
 const PRESET_CLASSES = {
-  'chat-message-entry': 'motion-slide-in-up motion-fade-in',
+  'chat-message-entry': 'chat-message-enter',
   'vip-ring': 'motion-pulse-ring',
   'emote-bounce': 'motion-bounce',
   'poll-announcement': 'motion-slide-in-up motion-fade-in',
@@ -80,4 +80,3 @@ export function usePopAccent(options?: MotionOptions) {
 export function useFlipEntrance(options?: MotionOptions) {
   return useMotionPreset('flip-up', options);
 }
-

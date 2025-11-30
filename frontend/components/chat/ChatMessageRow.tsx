@@ -57,36 +57,37 @@ export default function ChatMessageRow({ message, animate, pulseClass }: ChatMes
   });
 
   return (
-    <div
-      className={cn(
-        'leading-snug break-words py-0.5 text-sm text-foreground',
-        animate && 'motion-slide-in-up',
-        pulseClass
-      )}
-      style={{ lineHeight: 1.4 }}
-    >
-      <div className="flex flex-wrap items-center gap-1.5">
-        {badges}
-        <span className={usernameWrapperClass}>
-          {usernameNode}
-        </span>
-        <span className="text-muted-foreground font-medium">:</span>
-        <span className="flex flex-wrap items-center gap-1 text-[15px] font-medium">
-          {segments.map((segment, index) =>
-            segment.type === 'emote' ? (
-              <ChatEmote
-                key={`${message.id}-emote-${index}`}
-                text={segment.value}
-                special={message.special_emote}
-                disabled={!animate}
-              />
-            ) : (
-              <span key={`${message.id}-text-${index}`} className="whitespace-pre-wrap">
-                {segment.value}
-              </span>
-            )
-          )}
-        </span>
+    <div className={cn(animate && 'chat-message-enter')}>
+      <div
+        className={cn(
+          'leading-snug break-words py-0.5 text-sm text-foreground',
+          pulseClass
+        )}
+        style={{ lineHeight: 1.4 }}
+      >
+        <div className="flex flex-wrap items-center gap-1.5">
+          {badges}
+          <span className={usernameWrapperClass}>
+            {usernameNode}
+          </span>
+          <span className="text-muted-foreground font-medium">:</span>
+          <span className="flex flex-wrap items-center gap-1 text-[15px] font-medium">
+            {segments.map((segment, index) =>
+              segment.type === 'emote' ? (
+                <ChatEmote
+                  key={`${message.id}-emote-${index}`}
+                  text={segment.value}
+                  special={message.special_emote}
+                  disabled={!animate}
+                />
+              ) : (
+                <span key={`${message.id}-text-${index}`} className="whitespace-pre-wrap">
+                  {segment.value}
+                </span>
+              )
+            )}
+          </span>
+        </div>
       </div>
     </div>
   );
@@ -120,4 +121,3 @@ function parseSegments(message: string): Segment[] {
 
   return segments;
 }
-
