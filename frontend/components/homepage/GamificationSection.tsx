@@ -36,7 +36,7 @@ export function GamificationSection({ missions, weeklyData, level }: Gamificatio
           </Link>
         </div>
 
-        <div className="bg-card/80 backdrop-blur-sm border border-border/50 rounded-2xl p-8">
+        <div className="bg-card/80 backdrop-blur-sm border-2 border-primary/40 rounded-2xl p-8 hover:border-primary/50 hover:bg-card/90 hover:shadow-[0_4px_20px_rgba(0,0,0,0.3)] hover:shadow-primary/20 transition-all duration-200">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-xl font-bold">Your Missions</h3>
             {level !== undefined && (

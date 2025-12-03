@@ -14,7 +14,7 @@ export function FairModelSection() {
 
         {/* Flow Diagram */}
         <div className="flex flex-col md:flex-row items-center justify-center gap-8 md:gap-6">
-          <div className="bg-card/80 backdrop-blur-sm border border-border/50 rounded-2xl p-8 flex-1 max-w-xs">
+          <div className="bg-card/80 backdrop-blur-sm border-2 border-primary/40 rounded-2xl p-8 flex-1 max-w-xs hover:border-primary/50 hover:bg-card/90 hover:shadow-[0_4px_20px_rgba(0,0,0,0.3)] hover:shadow-primary/20 transition-all duration-200">
             <div className="w-16 h-16 bg-primary/20 rounded-full flex items-center justify-center mx-auto mb-4">
               <span className="text-3xl">💳</span>
             </div>
@@ -24,7 +24,7 @@ export function FairModelSection() {
 
           <div className="text-primary text-3xl hidden md:block">→</div>
 
-          <div className="bg-card/80 backdrop-blur-sm border border-primary rounded-2xl p-8 flex-1 max-w-xs shadow-lg shadow-primary/20">
+          <div className="bg-card/80 backdrop-blur-sm border-2 border-primary/50 rounded-2xl p-8 flex-1 max-w-xs hover:border-primary/60 hover:bg-card/90 hover:shadow-[0_4px_20px_rgba(0,0,0,0.3)] hover:shadow-primary/20 transition-all duration-200">
             <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center mx-auto mb-4">
               <span className="text-3xl">📊</span>
             </div>
@@ -34,7 +34,7 @@ export function FairModelSection() {
 
           <div className="text-primary text-3xl">+</div>
 
-          <div className="bg-card/80 backdrop-blur-sm border border-primary rounded-2xl p-8 flex-1 max-w-xs shadow-lg shadow-primary/20">
+          <div className="bg-card/80 backdrop-blur-sm border-2 border-primary/50 rounded-2xl p-8 flex-1 max-w-xs hover:border-primary/60 hover:bg-card/90 hover:shadow-[0_4px_20px_rgba(0,0,0,0.3)] hover:shadow-primary/20 transition-all duration-200">
             <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center mx-auto mb-4">
               <span className="text-3xl">🏆</span>
             </div>
@@ -43,7 +43,7 @@ export function FairModelSection() {
           </div>
         </div>
 
-        <div className="mt-12 bg-card/80 backdrop-blur-sm border border-border/50 rounded-xl p-6 max-w-2xl mx-auto">
+        <div className="mt-12 bg-card/80 backdrop-blur-sm border-2 border-primary/40 rounded-xl p-6 max-w-2xl mx-auto hover:border-primary/50 hover:bg-card/90 hover:shadow-[0_4px_20px_rgba(0,0,0,0.3)] hover:shadow-primary/20 transition-all duration-200">
           <p className="text-foreground text-sm">
             <span className="font-bold text-primary">Example:</span> If you watch 80% Tour of Estonia and 20% Flanders, then 80% of your organizer share goes to Estonia, 20% to Flanders.
           </p>

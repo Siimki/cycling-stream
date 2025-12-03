@@ -18,11 +18,11 @@ export function StatCard({ label, value, icon, change, changeType = 'neutral', h
     'text-muted-foreground';
 
   const borderClass = highlight
-    ? 'border-primary glow-green'
-    : 'border-border/50 hover:border-border';
+    ? 'border-2 border-primary/50 hover:border-primary/60 hover:shadow-[0_4px_20px_rgba(0,0,0,0.3)] hover:shadow-primary/20'
+    : 'border-2 border-primary/40 hover:border-primary/50 hover:shadow-[0_4px_20px_rgba(0,0,0,0.3)] hover:shadow-primary/20';
 
   return (
-    <div className={`bg-card/80 backdrop-blur-sm border ${borderClass} rounded-xl p-5 transition-all hover:border-border`}>
+    <div className={`bg-card/80 backdrop-blur-sm ${borderClass} rounded-xl p-5 transition-all duration-200 hover:bg-card/90`}>
       <div className="flex items-center justify-between mb-2">
         <span className="text-sm text-muted-foreground font-medium">{label}</span>
         {icon && <span className="text-2xl">{icon}</span>}
