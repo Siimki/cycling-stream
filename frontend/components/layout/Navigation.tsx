@@ -67,8 +67,8 @@ export function Navigation({ variant = "full", appearance = "solid", className }
       {/* Use same horizontal padding as video container for perfect alignment */}
       <div className={cn("px-6 lg:px-8", isOverlay ? "pt-4 pb-3" : "pt-5 pb-4")}>
         <div className="flex items-center justify-between">
-          {/* Left: Brand - Equal padding zone */}
-          <div className="flex items-center flex-1">
+          {/* Left: Brand + Live Button - Equal padding zone */}
+          <div className="flex items-center gap-4 flex-1">
             <Link href="/" className="flex items-center gap-2.5 hover:opacity-90 transition-opacity">
               <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-lg shadow-primary/20">
                 <Zap className="w-5 h-5 sm:w-6 sm:h-6 text-primary-foreground" />
@@ -77,27 +77,31 @@ export function Navigation({ variant = "full", appearance = "solid", className }
                 Peloton<span className="text-primary">Live</span>
               </span>
             </Link>
+            
+            {/* Live button - moved from center nav */}
+            {variant === "full" && (
+              <Link href="/">
+                <Button 
+                  variant="ghost" 
+                  className={`relative text-xl font-semibold h-12 px-5 py-3 transition-colors ${
+                    isActive('/') 
+                      ? 'text-foreground' 
+                      : 'text-muted-foreground hover:text-foreground hover:bg-muted/30'
+                  }`}
+                >
+                  Live
+                  <span className="ml-2 w-2.5 h-2.5 rounded-full bg-primary" />
+                  {isActive('/') && (
+                    <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full" />
+                  )}
+                </Button>
+              </Link>
+            )}
           </div>
 
           {/* Center: Primary Navigation - Centered */}
           {variant === "full" && (
             <nav className="hidden md:flex items-center gap-1 flex-shrink-0">
-                <Link href="/">
-                  <Button 
-                    variant="ghost" 
-                    className={`relative text-xl font-semibold h-12 px-5 py-3 transition-colors ${
-                      isActive('/') 
-                        ? 'text-foreground' 
-                        : 'text-muted-foreground hover:text-foreground hover:bg-muted/30'
-                    }`}
-                  >
-                    Live
-                    <span className="ml-2 w-2.5 h-2.5 rounded-full bg-primary" />
-                    {isActive('/') && (
-                      <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full" />
-                    )}
-                  </Button>
-                </Link>
                 {isAuthenticated && (
                   <Link href="/for-you">
                     <Button
