@@ -1,14 +1,15 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { getUserXP, getUserWeekly, type XPProgress, type WeeklyGoalProgress } from '@/lib/api';
+import { getUserXP, getUserWeekly, claimWeeklyReward, type XPProgress, type WeeklyGoalProgress } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 
 export function WeeklyOverview() {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, refreshUser } = useAuth();
   const [xpData, setXpData] = useState<XPProgress | null>(null);
   const [weeklyData, setWeeklyData] = useState<WeeklyGoalProgress | null>(null);
   const [loading, setLoading] = useState(true);
+  const [claiming, setClaiming] = useState(false);
 
   useEffect(() => {
     if (!isAuthenticated || !user) {
@@ -61,12 +62,39 @@ export function WeeklyOverview() {
   }
 
   if (!xpData) {
-    return null;
+    return (
+      <div className="bg-card/80 backdrop-blur-sm border border-border/50 rounded-lg p-4 sm:p-6 text-center">
+        <p className="text-sm text-muted-foreground">Weekly stats will appear here once you start watching.</p>
+      </div>
+    );
   }
 
   const progressPercent = xpData.xp_for_next_level > 0
     ? ((xpData.progress_in_current_level / xpData.xp_for_next_level) * 100)
     : 100;
+
+  const handleClaimWeekly = async () => {
+    if (claiming || !weeklyData?.can_claim_reward) return;
+    
+    setClaiming(true);
+    try {
+      await claimWeeklyReward();
+      // Refresh weekly data and user
+      const [xp, weekly] = await Promise.all([
+        getUserXP().catch(() => null),
+        getUserWeekly().catch(() => null),
+      ]);
+      setXpData(xp);
+      setWeeklyData(weekly);
+      if (refreshUser) {
+        await refreshUser();
+      }
+    } catch (error) {
+      console.error('Failed to claim weekly reward:', error);
+    } finally {
+      setClaiming(false);
+    }
+  };
 
   return (
     <div className="bg-card/80 backdrop-blur-sm border border-border/50 rounded-lg p-4 sm:p-6">
@@ -94,14 +122,16 @@ export function WeeklyOverview() {
         </div>
       </div>
 
-      {/* Weekly Goals - Simple 2-row blocks */}
+      {/* Weekly Goals - Dynamic thresholds and rewards */}
       {weeklyData && (
         <div className="space-y-4 pt-4 border-t border-border/50">
           {/* Watch Time Goal */}
           <div>
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Watch Time</span>
-              <span className="font-medium text-foreground text-right min-w-[80px]">{weeklyData.watch_minutes} / 30 min</span>
+              <span className="font-medium text-foreground text-right min-w-[80px]">
+                {weeklyData.watch_minutes} / {weeklyData.watch_minutes_goal || 30} min
+              </span>
             </div>
           </div>
 
@@ -109,9 +139,34 @@ export function WeeklyOverview() {
           <div>
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Chat Messages</span>
-              <span className="font-medium text-foreground text-right min-w-[80px]">{weeklyData.chat_messages} / 3</span>
+              <span className="font-medium text-foreground text-right min-w-[80px]">
+                {weeklyData.chat_messages} / {weeklyData.chat_messages_goal || 3}
+              </span>
             </div>
           </div>
+
+          {/* Weekly Reward Info */}
+          {weeklyData.reward_xp > 0 && weeklyData.reward_points > 0 && (
+            <div className="pt-2">
+              {weeklyData.can_claim_reward ? (
+                <button
+                  onClick={handleClaimWeekly}
+                  disabled={claiming}
+                  className="w-full bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-primary-foreground font-semibold py-2 px-4 rounded-lg transition disabled:opacity-50"
+                >
+                  {claiming ? 'Claiming...' : `Claim weekly reward (+${weeklyData.reward_xp} XP, +${weeklyData.reward_points} pts)`}
+                </button>
+              ) : weeklyData.weekly_goal_completed ? (
+                <div className="text-xs text-muted-foreground text-center">
+                  Weekly reward claimed! Come back next week.
+                </div>
+              ) : (
+                <div className="text-xs text-muted-foreground text-center">
+                  Weekly reward: +{weeklyData.reward_xp} XP, +{weeklyData.reward_points} pts
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>

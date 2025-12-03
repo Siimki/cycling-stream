@@ -203,3 +203,51 @@ func (s *WeeklyService) UpdateStreakOnWeekEnd(userID, previousWeekNumber string)
 	return nil
 }
 
+// ClaimWeeklyReward claims the weekly goal reward for a user
+func (s *WeeklyService) ClaimWeeklyReward(userID, weekNumber string) error {
+	// Get weekly stats
+	stats, err := s.weeklyRepo.GetCurrentWeekStats(userID, weekNumber)
+	if err != nil {
+		return fmt.Errorf("failed to get weekly stats: %w", err)
+	}
+
+	// Check if goal is completed
+	if !stats.WeeklyGoalCompleted {
+		return fmt.Errorf("weekly goal not completed")
+	}
+
+	// Check if already claimed
+	if stats.WeeklyRewardClaimedAt != nil {
+		return fmt.Errorf("weekly reward already claimed")
+	}
+
+	// Mark as claimed
+	if err := s.weeklyRepo.ClaimWeeklyReward(userID, weekNumber); err != nil {
+		return fmt.Errorf("failed to claim weekly reward: %w", err)
+	}
+
+	// Award rewards based on config
+	xpReward := 150
+	pointsReward := 200
+	if s.xpConfig != nil {
+		xpReward = s.xpConfig.Awards.WeeklyGoal.XP
+		pointsReward = s.xpConfig.Awards.WeeklyGoal.Points
+	}
+
+	if s.xpService != nil && xpReward > 0 {
+		if err := s.xpService.AwardXP(userID, xpReward, "weekly_goal_claim"); err != nil {
+			// Log error but don't fail
+			fmt.Printf("Failed to award XP for weekly goal claim: %v\n", err)
+		}
+	}
+
+	if pointsReward > 0 {
+		if err := s.userRepo.AddPoints(userID, pointsReward); err != nil {
+			// Log error but don't fail
+			fmt.Printf("Failed to award points for weekly goal claim: %v\n", err)
+		}
+	}
+
+	return nil
+}
+

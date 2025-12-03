@@ -20,21 +20,28 @@ export default function MissionsPage() {
             Missions
           </h1>
           <p className="text-muted-foreground/70 text-base sm:text-lg">
-            Complete challenges to earn points and unlock rewards.
+            Complete weekly goals and career missions to earn XP, keep your streak alive, and climb the leaderboard.
           </p>
         </div>
 
-        {/* Weekly Overview */}
-        <div className="mb-8">
-          <WeeklyOverview />
-        </div>
+        {/* This Week Section */}
+        <section className="mb-10">
+          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">
+            This Week
+          </h2>
+          <div className="space-y-6">
+            <WeeklyOverview />
+            <StreakCard />
+          </div>
+        </section>
 
-        {/* Streak */}
-        <div className="mb-10">
-          <StreakCard />
-        </div>
-
-        <MissionsPanel />
+        {/* All Missions Section */}
+        <section>
+          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">
+            All Missions
+          </h2>
+          <MissionsPanel />
+        </section>
       </main>
       <Footer />
     </div>

@@ -27,7 +27,12 @@ export function MissionsPanel({ limit, showViewAll = true }: MissionsPanelProps)
       const data = await getUserMissions();
       setMissions(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load missions');
+      // Check if it's an auth error (401)
+      if (err && typeof err === 'object' && 'status' in err && (err as { status?: number }).status === 401) {
+        setError('authentication_required');
+      } else {
+        setError(err instanceof Error ? err.message : 'Failed to load missions');
+      }
     } finally {
       if (!silent) {
         setLoading(false);
@@ -79,15 +84,40 @@ export function MissionsPanel({ limit, showViewAll = true }: MissionsPanelProps)
     );
   }
 
+  if (error === 'authentication_required') {
+    return (
+      <div className="bg-card/80 backdrop-blur-sm border border-border/50 rounded-lg p-8 text-center">
+        <h3 className="text-xl font-semibold text-foreground/95 mb-3">Log in to start missions</h3>
+        <p className="text-muted-foreground mb-6">
+          Earn XP, build your streak, and unlock rewards by watching races.
+        </p>
+        <Link
+          href="/auth/login"
+          className="inline-block bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-2 px-6 rounded-lg transition"
+        >
+          Log in
+        </Link>
+      </div>
+    );
+  }
+
   if (error) {
     return <ErrorMessage message={error} variant="inline" />;
   }
 
   if (missions.length === 0) {
     return (
-      <div className="text-center py-8">
-        <p className="text-muted-foreground">No active missions at the moment.</p>
-        <p className="text-muted-foreground/70 text-sm mt-1">Check back soon for new challenges!</p>
+      <div className="bg-card/80 backdrop-blur-sm border border-border/50 rounded-lg p-8 text-center">
+        <h3 className="text-lg font-semibold text-foreground/95 mb-2">No missions yet</h3>
+        <p className="text-muted-foreground mb-4">
+          We're not running any active missions right now. Watch live races and check back before big events.
+        </p>
+        <Link
+          href="/races"
+          className="inline-block bg-card hover:bg-card/90 border border-border text-foreground font-medium py-2 px-6 rounded-lg transition"
+        >
+          Browse races
+        </Link>
       </div>
     );
   }

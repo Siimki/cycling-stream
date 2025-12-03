@@ -15,11 +15,28 @@ interface MissionCardProps {
 export function MissionCard({ userMission, onClaimed }: MissionCardProps) {
   const { refreshUser } = useAuth();
   const [isClaiming, setIsClaiming] = useState(false);
-  const { progress, completed_at, claimed_at, mission_id, title, description, points_reward, target_value } = userMission;
+  const { progress, completed_at, claimed_at, mission_id, title, description, points_reward, xp_reward, target_value, mission_type } = userMission;
 
   const isCompleted = !!completed_at;
   const isClaimed = !!claimed_at;
   const canClaim = isCompleted && !isClaimed;
+
+  // Determine action link based on mission type
+  const getActionLink = () => {
+    switch (mission_type) {
+      case 'watch_time':
+      case 'watch_race':
+        return { href: '/races', label: 'Watch races' };
+      case 'chat_message':
+        return { href: '/races', label: 'Join live chat' };
+      case 'predict_winner':
+        return { href: '/races', label: 'View predictions' };
+      default:
+        return null;
+    }
+  };
+
+  const actionLink = getActionLink();
 
   const handleClaim = async (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
@@ -83,7 +100,9 @@ export function MissionCard({ userMission, onClaimed }: MissionCardProps) {
             <div className="text-lg sm:text-xl font-bold text-primary">
               +{points_reward}
             </div>
-            <div className="text-xs text-muted-foreground">points</div>
+            <div className="text-xs text-muted-foreground">
+              {xp_reward && xp_reward > 0 ? `points · +${xp_reward} XP` : 'points'}
+            </div>
           </div>
         </div>
       </div>
@@ -95,23 +114,35 @@ export function MissionCard({ userMission, onClaimed }: MissionCardProps) {
 
       {/* Status/Claim Button */}
       <div className="flex items-center justify-between mt-4">
-        {isClaimed ? (
-          <span className="text-xs text-muted-foreground font-medium">Reward claimed</span>
-        ) : canClaim ? (
-          <Button
-            type="button"
-            onClick={handleClaim}
-            disabled={isClaiming}
-            className="bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-primary-foreground font-semibold"
-            size="sm"
-          >
-            {isClaiming ? 'Claiming...' : `Claim +${points_reward}`}
-          </Button>
-        ) : isCompleted ? (
-          <span className="text-sm text-primary font-medium">Completed!</span>
-        ) : (
-          <span className="text-sm text-muted-foreground font-medium">In progress</span>
-        )}
+        <div className="flex items-center gap-3">
+          {isClaimed ? (
+            <span className="text-xs text-muted-foreground font-medium">Reward claimed</span>
+          ) : canClaim ? (
+            <Button
+              type="button"
+              onClick={handleClaim}
+              disabled={isClaiming}
+              className="bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-primary-foreground font-semibold"
+              size="sm"
+            >
+              {isClaiming ? 'Claiming...' : `Claim +${points_reward}`}
+            </Button>
+          ) : isCompleted ? (
+            <span className="text-sm text-primary font-medium">Completed!</span>
+          ) : (
+            <>
+              <span className="text-sm text-muted-foreground font-medium">In progress</span>
+              {actionLink && !isCompleted && (
+                <a
+                  href={actionLink.href}
+                  className="text-xs text-primary hover:underline font-medium"
+                >
+                  {actionLink.label} →
+                </a>
+              )}
+            </>
+          )}
+        </div>
       </div>
     </div>
   );

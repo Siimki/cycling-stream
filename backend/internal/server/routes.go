@@ -242,6 +242,7 @@ func setupUserRoutes(app *fiber.App, authHandler *handlers.AuthHandler, paymentH
 
 	// Weekly routes
 	user.Get("/me/weekly", weeklyHandler.GetWeeklyProgress)
+	user.Post("/me/weekly/claim", weeklyHandler.ClaimWeeklyReward)
 }
 
 func setupWebhookRoutes(app *fiber.App, paymentHandler *handlers.PaymentHandler) {

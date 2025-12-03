@@ -401,6 +401,7 @@ export interface Mission {
   title: string;
   description?: string;
   points_reward: number;
+  xp_reward: number;
   target_value: number;
   valid_from: string;
   valid_until?: string;
@@ -439,6 +440,7 @@ export interface UserMissionWithDetails {
   title: string;
   description?: string;
   points_reward: number;
+  xp_reward: number;
   target_value: number;
   valid_from: string;
   valid_until?: string;
@@ -530,7 +532,9 @@ export interface WeeklyGoalProgress {
   user_id: string;
   week_number: string;
   watch_minutes: number;
+  watch_minutes_goal?: number;
   chat_messages: number;
+  chat_messages_goal?: number;
   weekly_goal_completed: boolean;
   current_streak_weeks: number;
   best_streak_weeks: number;
