@@ -27,6 +27,7 @@ out/
 go.work
 backend/api
 backend/main
+backend/bin/
 main
 
 # IDE
@@ -43,6 +44,8 @@ Thumbs.db
 # Logs
 *.log
 logs/
+*-output.log
+*-results.json
 
 # Database
 *.db

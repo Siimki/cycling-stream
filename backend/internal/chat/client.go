@@ -19,7 +19,7 @@ const (
 	pingPeriod = (pongWait * 9) / 10
 
 	// Maximum message size allowed from peer
-	maxMessageSize = 512
+	maxMessageSize = 2048
 )
 
 // MessageHandler is a function that handles incoming messages from a client
@@ -33,12 +33,13 @@ type Client struct {
 	userID         *string
 	username       string
 	isAdmin        bool
+	raceID         string
 	messageHandler MessageHandler
 	onClose        func(*Client)
 }
 
 // NewClient creates a new Client
-func NewClient(hub *Hub, conn *websocket.Conn, userID *string, username string, isAdmin bool, messageHandler MessageHandler, onClose func(*Client)) *Client {
+func NewClient(hub *Hub, conn *websocket.Conn, userID *string, username string, isAdmin bool, raceID string, messageHandler MessageHandler, onClose func(*Client)) *Client {
 	return &Client{
 		hub:            hub,
 		conn:           conn,
@@ -46,6 +47,7 @@ func NewClient(hub *Hub, conn *websocket.Conn, userID *string, username string, 
 		userID:         userID,
 		username:       username,
 		isAdmin:        isAdmin,
+		raceID:         raceID,
 		messageHandler: messageHandler,
 		onClose:        onClose,
 	}
@@ -183,4 +185,9 @@ func (c *Client) IsAdmin() bool {
 // UserID returns the connected user's ID (if authenticated).
 func (c *Client) UserID() *string {
 	return c.userID
+}
+
+// RaceID returns the race this client is associated with.
+func (c *Client) RaceID() string {
+	return c.raceID
 }

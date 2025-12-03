@@ -12,10 +12,10 @@ instanceDetails:
 
 videoSettings:
   chunkLengthInSeconds: 6
-  # Stream key should be set via OWNCAST_STREAM_KEY environment variable
-  # Generate a secure key: openssl rand -hex 32
+  # Stream key - generate a secure key: openssl rand -hex 32
   # NEVER use default or weak keys in production!
-  streamingKey: ${OWNCAST_STREAM_KEY}
+  # This key is loaded from .env file via OWNCAST_STREAM_KEY
+  streamingKey: f785068d7e2730d2d575dbac372d13ec840688e71bc3c26e35cd9fab83cff4d9
   streamKeyOverrides: []
 
 ffmpegSettings:

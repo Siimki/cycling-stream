@@ -7,17 +7,21 @@ import { Zap, Search, Bell, User, ChevronDown, Menu, LogOut, Settings } from "lu
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/contexts/AuthContext"
 import UserStatusBar from "@/components/user/UserStatusBar"
+import { cn } from "@/lib/utils"
 
 interface NavigationProps {
   variant?: "full" | "minimal"
+  appearance?: "solid" | "overlay"
+  className?: string
 }
 
-export function Navigation({ variant = "full" }: NavigationProps) {
+export function Navigation({ variant = "full", appearance = "solid", className }: NavigationProps) {
   const router = useRouter()
   const pathname = usePathname()
   const { user, isAuthenticated, isLoading: loadingUser, logout } = useAuth()
   const [showUserMenu, setShowUserMenu] = useState(false)
   const userMenuRef = useRef<HTMLDivElement>(null)
+  const isOverlay = appearance === "overlay"
   
   // Helper to check if a route is active
   const isActive = (path: string) => {
@@ -51,9 +55,17 @@ export function Navigation({ variant = "full" }: NavigationProps) {
   }, [logout, router])
 
   return (
-    <header className="sticky top-0 z-50 bg-card/95 backdrop-blur-xl border-b border-[#0D0D0D] shrink-0 shadow-sm">
+    <header
+      className={cn(
+        "sticky top-0 z-50 border-b shrink-0 transition-all duration-300",
+        isOverlay
+          ? "bg-gradient-to-b from-black/80 via-black/45 to-transparent border-white/10 backdrop-blur-md shadow-none"
+          : "bg-card/95 backdrop-blur-xl border-[#0D0D0D] shadow-sm",
+        className,
+      )}
+    >
       {/* Use same horizontal padding as video container for perfect alignment */}
-      <div className="px-6 lg:px-8 pt-5 pb-4">
+      <div className={cn("px-6 lg:px-8", isOverlay ? "pt-4 pb-3" : "pt-5 pb-4")}>
         <div className="flex items-center justify-between">
           {/* Left: Brand - Equal padding zone */}
           <div className="flex items-center flex-1">

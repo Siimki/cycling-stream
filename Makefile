@@ -23,7 +23,7 @@ help: ## Show this help message
 	@echo '  DB_USER=$(DB_USER)'
 	@echo '  DB_NAME=$(DB_NAME)'
 
-docker-up: ## Start Docker containers (Postgres and pgAdmin)
+docker-up: ## Start Docker containers (Postgres, pgAdmin, and Owncast)
 	@echo "Starting Docker containers..."
 	docker-compose up -d
 	@echo "Waiting for Postgres to be ready..."
@@ -41,6 +41,8 @@ docker-up: ## Start Docker containers (Postgres and pgAdmin)
 		exit 1; \
 	fi
 	@echo "pgAdmin available at http://localhost:$${PGADMIN_PORT:-5050}"
+	@echo "Owncast available at http://localhost:$${OWNCAST_HTTP_PORT:-8081}"
+	@echo "Owncast RTMP endpoint: rtmp://localhost:$${OWNCAST_RTMP_PORT:-1935}/live"
 
 docker-down: ## Stop Docker containers
 	docker-compose down
@@ -187,3 +189,29 @@ fix-schema: ## Attempt to fix database schema issues
 	@echo "Fixing database schema..."
 	@chmod +x scripts/fix-schema.sh
 	@./scripts/fix-schema.sh
+
+owncast-generate-key: ## Generate a secure stream key for Owncast
+	@echo "Generating secure stream key..."
+	@if command -v openssl > /dev/null 2>&1; then \
+		KEY=$$(openssl rand -hex 32); \
+		echo "Generated stream key: $$KEY"; \
+		echo ""; \
+		echo "Add this to your .env file or export it:"; \
+		echo "  export OWNCAST_STREAM_KEY=$$KEY"; \
+		echo ""; \
+		echo "Or add to docker-compose.yml environment section:"; \
+		echo "  - OWNCAST_STREAM_KEY=$$KEY"; \
+	else \
+		echo "ERROR: openssl not found. Install openssl or generate key manually."; \
+		exit 1; \
+	fi
+
+owncast-logs: ## View Owncast container logs
+	docker-compose logs -f owncast
+
+owncast-status: ## Check Owncast service status
+	@echo "Checking Owncast status..."
+	@docker-compose ps owncast
+	@echo ""
+	@echo "Testing Owncast API..."
+	@curl -s http://localhost:$${OWNCAST_HTTP_PORT:-8081}/api/status | python3 -m json.tool 2>/dev/null || echo "Owncast API not responding"

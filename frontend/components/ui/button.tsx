@@ -37,7 +37,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     const { play } = useSound()
 
     const baseStyles =
-      "relative inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 overflow-hidden transition-colors"
+      "relative inline-flex items-center justify-center whitespace-nowrap rounded-[var(--control-radius)] font-medium ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 overflow-hidden transition-colors text-[var(--font-size-sm)]"
 
     const motionStyles = motionEnabled ? "button-motion" : ""
 
@@ -51,10 +51,10 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     } as const
 
     const sizes = {
-      default: "h-10 px-4 py-2",
-      sm: "h-9 rounded-md px-3",
-      lg: "h-11 rounded-md px-8",
-      icon: "h-10 w-10",
+      default: "h-[var(--control-height-md)] min-h-[var(--control-height-md)] px-[var(--space-4)]",
+      sm: "h-[var(--control-height-sm)] min-h-[var(--control-height-sm)] px-[var(--space-3)]",
+      lg: "h-[var(--control-height-lg)] min-h-[var(--control-height-lg)] px-[var(--space-5)] text-[var(--font-size-md)]",
+      icon: "h-[var(--control-height-md)] w-[var(--control-height-md)] min-h-[var(--control-height-md)] p-0",
     } as const
 
     const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
@@ -75,7 +75,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         {...props}
       >
         {RippleContainer}
-        <span className="relative z-10 inline-flex items-center gap-2">
+        <span className="relative z-10 inline-flex items-center gap-[var(--space-2)]">
           {children}
         </span>
       </button>
@@ -86,4 +86,3 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 Button.displayName = "Button"
 
 export { Button }
-

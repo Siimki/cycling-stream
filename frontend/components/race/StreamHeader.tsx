@@ -3,5 +3,5 @@
 import { Navigation } from "@/components/layout/Navigation"
 
 export function StreamHeader() {
-  return <Navigation variant="full" />
+  return <Navigation variant="full" appearance="overlay" />
 }

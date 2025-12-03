@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"strings"
+	"time"
 
 	"github.com/cyclingstream/backend/internal/logger"
 	"github.com/gofiber/fiber/v2"
@@ -56,10 +57,26 @@ func ChatAuthMiddleware(jwtSecret string) fiber.Handler {
 		})
 
 		if err != nil || !token.Valid {
-			logger.Info("ChatAuthMiddleware: Invalid token, continuing as anonymous", map[string]interface{}{
+			logger.Info("ChatAuthMiddleware: Invalid or expired token", map[string]interface{}{
 				"error": err,
 			})
-			return c.Next()
+			return fiber.ErrUnauthorized
+		}
+
+		// Explicitly validate registered claims (expires/nbf) to be safe
+		now := time.Now()
+		if claims.ExpiresAt != nil && claims.ExpiresAt.Time.Before(now) {
+			logger.Info("ChatAuthMiddleware: Claims validation failed", map[string]interface{}{
+				"error": "expired",
+			})
+			return fiber.ErrUnauthorized
+		}
+
+		if claims.NotBefore != nil && claims.NotBefore.Time.After(now) {
+			logger.Info("ChatAuthMiddleware: Claims validation failed", map[string]interface{}{
+				"error": "not before in future",
+			})
+			return fiber.ErrUnauthorized
 		}
 
 		logger.Info("ChatAuthMiddleware: Valid token, setting user info", map[string]interface{}{

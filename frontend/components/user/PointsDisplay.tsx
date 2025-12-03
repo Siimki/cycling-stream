@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { Zap, Clock } from "lucide-react"
 import { HudToggleButton } from "@/components/user/HudToggleButton"
 import { useHudStats } from "@/components/user/HudStatsProvider"
@@ -12,6 +12,8 @@ export function PointsDisplay() {
   const [isVisible, setIsVisible] = useState(true);
   const { isAuthenticated } = useAuth()
   const { points, watchTime } = useHudStats()
+  const [recentGain, setRecentGain] = useState<number | null>(null)
+  const lastPointsRef = useRef<number | null>(null)
 
   // Tier calculation - memoized to avoid recalculation on every render
   // Must be called before any conditional returns to follow React Hooks rules
@@ -23,12 +25,47 @@ export function PointsDisplay() {
     return { currentTier: current, nextTier: next, progressToNext: progress }
   }, [points])
 
+  const progressTicks = useMemo(() => {
+    if (!nextTier) return []
+    const span = nextTier.min - currentTier.min
+    if (span <= 0) return []
+    return [0.25, 0.5, 0.75].map((ratio) => ({
+      ratio: ratio * 100,
+      points: Math.max(1, Math.round(span * ratio)),
+    }))
+  }, [currentTier.min, nextTier])
+
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | null = null
+    if (lastPointsRef.current === null) {
+      lastPointsRef.current = points
+    } else if (points > (lastPointsRef.current ?? 0)) {
+      setRecentGain(points - (lastPointsRef.current ?? 0))
+      timer = window.setTimeout(() => setRecentGain(null), 2400)
+      lastPointsRef.current = points
+    } else {
+      lastPointsRef.current = points
+    }
+
+    return () => {
+      if (timer) {
+        clearTimeout(timer)
+      }
+    }
+  }, [points])
+
   if (!isAuthenticated) {
     return null
   }
 
   return (
     <div className="relative flex flex-col w-full bg-card/80 backdrop-blur-sm border-t border-border/30 overflow-hidden min-h-[4.5rem]">
+      {recentGain && isVisible && (
+        <div className="absolute top-3 left-4 z-10 px-3 py-1.5 rounded-full bg-primary/20 border border-primary/30 text-sm font-semibold text-primary shadow-lg shadow-primary/15">
+          +{recentGain} pts earned
+        </div>
+      )}
+
       {/* Placeholder bar when collapsed - Always maintains space */}
       <div className={`transition-all duration-300 ease-in-out ${!isVisible ? "h-14 opacity-100" : "h-0 opacity-0 overflow-hidden"}`}>
         <div className="h-14 w-full flex items-center px-4">
@@ -65,6 +102,10 @@ export function PointsDisplay() {
             </div>
           </div>
 
+          <p className="text-xs text-muted-foreground/80">
+            Earn points while you watch, tap reactions, and claim watch bonuses.
+          </p>
+
           {/* Progress to next tier */}
           {nextTier && (
             <div className="flex items-center gap-4">
@@ -77,11 +118,31 @@ export function PointsDisplay() {
                     {Math.round(progressToNext)}%
                   </span>
                 </div>
-                <div className="h-2 bg-muted/80 rounded-full overflow-hidden">
+                <div className="h-2.5 bg-muted/80 rounded-full overflow-hidden relative">
                   <div
                     className="h-full bg-gradient-to-r from-primary to-primary/80 rounded-full transition-all duration-500"
-                    style={{ width: `${progressToNext}%` }}
+                    style={{ width: `${Math.min(progressToNext, 100)}%` }}
                   />
+                  {progressTicks.map((tick) => (
+                    <div
+                      key={`tick-${tick.ratio}`}
+                      className="absolute inset-y-[-4px] flex items-center justify-center"
+                      style={{ left: `${tick.ratio}%` }}
+                    >
+                      <div className="w-[2px] h-4 bg-primary/55 rounded-full" />
+                    </div>
+                  ))}
+                </div>
+                <div className="flex items-center justify-between text-[11px] text-muted-foreground mt-2 flex-wrap gap-3">
+                  <span className="font-semibold text-foreground/70">{currentTier.name}</span>
+                  <div className="flex items-center gap-3 flex-wrap">
+                    {progressTicks.map((tick) => (
+                      <span key={`tick-label-${tick.ratio}`} className="text-xs text-foreground/70 font-medium">
+                        +{tick.points.toLocaleString()} pts
+                      </span>
+                    ))}
+                  </div>
+                  <span className="font-semibold text-foreground/70">{nextTier.name}</span>
                 </div>
               </div>
               <div className="flex items-center gap-2 text-sm text-muted-foreground font-medium">

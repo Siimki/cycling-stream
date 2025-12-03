@@ -33,6 +33,7 @@ interface ChatWrapperProps {
   requiresLogin: boolean;
   isLive: boolean;
   className?: string;
+  onCollapse?: () => void;
 }
 
 /**
@@ -40,12 +41,12 @@ interface ChatWrapperProps {
  * For login-required races, chat only shows when user is authenticated
  * For non-login-required races, chat always shows
  */
-export function ChatWrapper({ raceId, requiresLogin, isLive, className }: ChatWrapperProps) {
+export function ChatWrapper({ raceId, requiresLogin, isLive, className, onCollapse }: ChatWrapperProps) {
   const { isAuthenticated, isLoading } = useAuth();
   
   // Default container classes - can be overridden by className prop
   const containerClasses = cn(
-    "flex flex-col shrink-0 border-t lg:border-t-0 lg:border-l border-border relative z-0",
+    "flex flex-col shrink-0 min-h-0 border-t lg:border-t-0 lg:border-l border-border relative z-0",
     // Default responsive heights if not overridden
     !className?.includes("h-") && "h-[300px] sm:h-[350px] lg:h-[calc(100vh-4rem)]",
     className
@@ -86,8 +87,8 @@ export function ChatWrapper({ raceId, requiresLogin, isLive, className }: ChatWr
     // User is authenticated - show chat (enabled if stream is live OR user is authenticated)
     return (
       <div className={containerClasses}>
-        <ChatProvider raceId={raceId} enabled={isLive || isAuthenticated}>
-          <Chat />
+        <ChatProvider raceId={raceId} enabled={isLive && isAuthenticated}>
+          <Chat onCollapse={onCollapse} />
         </ChatProvider>
       </div>
     );
@@ -97,7 +98,7 @@ export function ChatWrapper({ raceId, requiresLogin, isLive, className }: ChatWr
   return (
     <div className={containerClasses}>
       <ChatProvider raceId={raceId} enabled={isLive}>
-        <Chat />
+        <Chat onCollapse={onCollapse} />
       </ChatProvider>
     </div>
   );

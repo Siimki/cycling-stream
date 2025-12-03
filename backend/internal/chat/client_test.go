@@ -18,24 +18,26 @@ func TestClient_NewClient(t *testing.T) {
 	hub := NewHub()
 	go hub.Run()
 	defer close(hub.register)
-	
+
 	t.Run("Authenticated client can send and receive messages", func(t *testing.T) {
 		userID := "user-123"
 		username := "TestUser"
+		raceID := "race-123"
 		messageHandler := func(*Client, *WSMessage) {}
 		onClose := func(*Client) {}
-		
-		client := NewClient(hub, nil, &userID, username, false, messageHandler, onClose)
+
+		client := NewClient(hub, nil, &userID, username, false, raceID, messageHandler, onClose)
 		assert.NotNil(t, client)
-		
+		assert.Equal(t, raceID, client.RaceID())
+
 		// Register client with hub
 		hub.register <- client
 		time.Sleep(10 * time.Millisecond)
-		
+
 		// Test that client can receive messages from hub
 		message := []byte("test message")
 		client.SendMessage(message)
-		
+
 		// Verify message was queued
 		select {
 		case msg := <-client.send:
@@ -46,16 +48,18 @@ func TestClient_NewClient(t *testing.T) {
 	})
 
 	t.Run("Anonymous client can receive messages", func(t *testing.T) {
-		client := NewClient(hub, nil, nil, "Anonymous", false, nil, nil)
+		raceID := "race-anon"
+		client := NewClient(hub, nil, nil, "Anonymous", false, raceID, nil, nil)
 		assert.NotNil(t, client)
-		
+		assert.Equal(t, raceID, client.RaceID())
+
 		hub.register <- client
 		time.Sleep(10 * time.Millisecond)
-		
+
 		// Anonymous client should still be able to receive messages
 		message := []byte("broadcast")
 		client.SendMessage(message)
-		
+
 		select {
 		case msg := <-client.send:
 			assert.Equal(t, message, msg)
@@ -70,8 +74,8 @@ func TestClient_SendMessage(t *testing.T) {
 	hub := NewHub()
 	go hub.Run()
 	defer close(hub.register)
-	
-	client := NewClient(hub, nil, nil, "Test", false, nil, nil)
+
+	client := NewClient(hub, nil, nil, "Test", false, "race-send", nil, nil)
 	hub.register <- client
 	time.Sleep(10 * time.Millisecond)
 
@@ -103,18 +107,18 @@ func TestClient_SendMessage(t *testing.T) {
 		// Create a client with a very small channel to test dropping behavior
 		smallChannel := make(chan []byte, 1)
 		client.send = smallChannel
-		
+
 		// Fill the channel
 		smallChannel <- []byte("first")
-		
+
 		// Try to send another message (should be dropped, returns false)
 		success := client.SendMessage([]byte("second"))
 		assert.False(t, success, "Message should be dropped when channel is full")
-		
+
 		// Verify only first message is in channel
 		msg := <-smallChannel
 		assert.Equal(t, []byte("first"), msg)
-		
+
 		// Verify second message was dropped
 		select {
 		case <-smallChannel:
@@ -128,7 +132,7 @@ func TestClient_SendMessage(t *testing.T) {
 // TestClient_MessageHandler tests message handler functionality
 func TestClient_MessageHandler(t *testing.T) {
 	hub := NewHub()
-	
+
 	t.Run("Message handler is called", func(t *testing.T) {
 		handlerCalled := false
 		handler := func(client *Client, msg *WSMessage) {
@@ -157,7 +161,7 @@ func TestClient_MessageHandler(t *testing.T) {
 // TestClient_OnClose tests onClose callback
 func TestClient_OnClose(t *testing.T) {
 	hub := NewHub()
-	
+
 	t.Run("OnClose callback is called", func(t *testing.T) {
 		onCloseCalled := false
 		onClose := func(client *Client) {
@@ -177,4 +181,3 @@ func TestClient_OnClose(t *testing.T) {
 		assert.True(t, onCloseCalled)
 	})
 }
-

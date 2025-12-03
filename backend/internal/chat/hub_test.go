@@ -17,6 +17,7 @@ func createTestClient(hub *Hub, userID *string, username string) *Client {
 		userID:   userID,
 		username: username,
 		isAdmin:  false,
+		raceID:   "race-test",
 	}
 }
 

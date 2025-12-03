@@ -63,7 +63,10 @@ func (h *ChatHandler) HandleWebSocket(c *fiber.Ctx) error {
 		})
 	}
 
-	raceID := c.Params("id")
+	// Copy the race ID string to avoid Fiber context buffer reuse after the handler returns
+	raceIDParam := c.Params("id")
+	raceID := string([]byte(raceIDParam))
+	logger.WithField("race_id", raceID).Debug("Chat WS request received")
 	if raceID == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": "Race ID is required",
@@ -72,6 +75,10 @@ func (h *ChatHandler) HandleWebSocket(c *fiber.Ctx) error {
 
 	// Basic validation: race IDs must be valid UUIDs.
 	if _, err := uuid.Parse(raceID); err != nil {
+		logger.WithFields(map[string]interface{}{
+			"race_id": raceID,
+			"error":   err,
+		}).Warn("Rejecting chat WS due to invalid race ID")
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": "Invalid race ID",
 		})
@@ -91,6 +98,7 @@ func (h *ChatHandler) HandleWebSocket(c *fiber.Ctx) error {
 	}
 
 	if race == nil {
+		logger.WithField("race_id", raceID).Warn("Chat WS race not found")
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
 			"error": "Race not found",
 		})
@@ -106,6 +114,10 @@ func (h *ChatHandler) HandleWebSocket(c *fiber.Ctx) error {
 	}
 
 	if stream == nil || stream.Status != "live" {
+		logger.WithFields(map[string]interface{}{
+			"race_id": raceID,
+			"status":  "nil_or_not_live",
+		}).Warn("Chat blocked because stream not live")
 		return c.Status(fiber.StatusPreconditionFailed).JSON(fiber.Map{
 			"error": "Chat is only available for live races",
 		})
@@ -140,7 +152,7 @@ func (h *ChatHandler) HandleWebSocket(c *fiber.Ctx) error {
 		messageHandler := func(client *chat.Client, msg *chat.WSMessage) {
 			// Handle send_message type
 			if msg.Type == string(chat.MessageTypeSendMessage) {
-				h.handleSendMessage(client, raceID, msg, userIDPtr, username, currentUser)
+				h.handleSendMessage(client, client.RaceID(), msg, userIDPtr, username, currentUser)
 			}
 		}
 
@@ -149,15 +161,15 @@ func (h *ChatHandler) HandleWebSocket(c *fiber.Ctx) error {
 			// Send left message to room
 			leftMsg := chat.NewLeftWSMessage(username)
 			if leftBytes, err := json.Marshal(leftMsg); err == nil {
-				h.hub.BroadcastToRoom(raceID, leftBytes)
+				h.hub.BroadcastToRoom(client.RaceID(), leftBytes)
 			}
 
 			// Leave room - use method directly since channels are package-private
-			h.hub.LeaveRoom(client, raceID)
+			h.hub.LeaveRoom(client, client.RaceID())
 		}
 
 		// Create client with message handler and onClose callback
-		client := chat.NewClient(h.hub, conn, userIDPtr, username, isAdmin, messageHandler, onClose)
+		client := chat.NewClient(h.hub, conn, userIDPtr, username, isAdmin, raceID, messageHandler, onClose)
 
 		// Start client (registers with hub and starts pumps)
 		// Note: Start() registers the client and then blocks on readPump()
@@ -168,7 +180,7 @@ func (h *ChatHandler) HandleWebSocket(c *fiber.Ctx) error {
 		// Send joined message to room
 		joinedMsg := chat.NewJoinedWSMessage(username)
 		if joinedBytes, err := json.Marshal(joinedMsg); err == nil {
-			h.hub.BroadcastToRoom(raceID, joinedBytes)
+			h.hub.BroadcastToRoom(client.RaceID(), joinedBytes)
 		}
 
 		// Start client (registers with hub and starts pumps)
@@ -179,11 +191,19 @@ func (h *ChatHandler) HandleWebSocket(c *fiber.Ctx) error {
 
 // handleSendMessage processes a send_message request
 func (h *ChatHandler) handleSendMessage(client *chat.Client, raceID string, msg *chat.WSMessage, userID *string, username string, user *models.User) {
+	logger.WithFields(map[string]interface{}{
+		"race_id": raceID,
+		"user_id": userID,
+	}).Debug("handleSendMessage start")
+
 	// Defensive: ensure raceID is a valid UUID before touching the DB
 	if _, err := uuid.Parse(raceID); err != nil {
 		logger.WithFields(map[string]interface{}{
-			"race_id": raceID,
-			"user_id": userID,
+			"race_id":       raceID,
+			"race_id_len":   len(raceID),
+			"race_id_bytes": []byte(raceID),
+			"user_id":       userID,
+			"client_race":   client.RaceID(),
 		}).Warn("Rejected chat message with invalid race_id")
 		errorMsg := chat.NewErrorWSMessage("Invalid race")
 		if errorBytes, marshalErr := json.Marshal(errorMsg); marshalErr == nil {
@@ -452,9 +472,9 @@ func (h *ChatHandler) hydrateMessageMetadata(messages []*models.ChatMessage) {
 	users, err := h.userRepo.GetByIDs(userIDs)
 	if err != nil {
 		logger.WithFields(map[string]interface{}{
-			"error":     err.Error(),
-			"user_ids":  userIDs,
-			"count":     len(userIDs),
+			"error":    err.Error(),
+			"user_ids": userIDs,
+			"count":    len(userIDs),
 		}).Warn("Failed to backfill chat metadata")
 		return
 	}

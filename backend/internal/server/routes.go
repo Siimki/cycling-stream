@@ -305,5 +305,9 @@ func setupAdminRoutes(app *fiber.App, adminHandler *handlers.AdminHandler, analy
 
 func setupAnalyticsRoutes(app *fiber.App, analyticsHandler *handlers.AnalyticsIngestionHandler) {
 	analytics := app.Group("/analytics", middleware.LenientRateLimiter())
+	// Handle OPTIONS for CORS preflight
+	analytics.Options("/events", func(c *fiber.Ctx) error {
+		return c.SendStatus(fiber.StatusNoContent)
+	})
 	analytics.Post("/events", analyticsHandler.IngestEvents)
 }

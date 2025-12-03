@@ -7,7 +7,7 @@ import { useExperience } from '@/contexts/ExperienceContext';
 import { useSound } from '@/components/providers/SoundProvider';
 import { getChatHistory, ChatMessage } from '@/lib/api';
 import { CHAT_HISTORY_LIMIT, CHAT_MESSAGE_MAX_LENGTH } from '@/constants/intervals';
-import { Send, Settings } from 'lucide-react';
+import { Send, Settings, PanelRightClose } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useHudStats } from '@/components/user/HudStatsProvider';
@@ -16,8 +16,13 @@ import ChatPollCard from '@/components/chat/ChatPollCard';
 import { createContextLogger } from '@/lib/logger';
 
 const logger = createContextLogger('Chat');
+const MAX_MESSAGE_BYTES = 1800; // keep below backend 2048 read limit with envelope overhead
 
-export default function Chat() {
+interface ChatProps {
+  onCollapse?: () => void;
+}
+
+export default function Chat({ onCollapse }: ChatProps) {
   const {
     messages: wsMessages,
     sendMessage,
@@ -33,6 +38,7 @@ export default function Chat() {
   } = useChatContext();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputValue, setInputValue] = useState('');
+  const [inputError, setInputError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [historyLoaded, setHistoryLoaded] = useState(false);
   const [historyError, setHistoryError] = useState<string | null>(null);
@@ -190,13 +196,32 @@ export default function Chat() {
     }
   }, [messages]);
 
+  useEffect(() => {
+    const trimmed = inputValue.trim();
+    if (!trimmed) {
+      setInputError(null);
+      return;
+    }
+    const byteLength = new TextEncoder().encode(trimmed).length;
+    if (byteLength <= MAX_MESSAGE_BYTES) {
+      setInputError(null);
+    }
+  }, [inputValue]);
+
   const handleSend = useCallback(
     () => { // Changed signature to match button onClick
-      if (!inputValue.trim() || !isAuthenticated) {
+      const trimmed = inputValue.trim();
+      if (!trimmed || !isAuthenticated) {
+        return;
+      }
+      const byteLength = new TextEncoder().encode(trimmed).length;
+      if (byteLength > MAX_MESSAGE_BYTES) {
+        setInputError(`Message too long (${byteLength}/${MAX_MESSAGE_BYTES} bytes).`);
         return;
       }
 
-      sendMessage(inputValue.trim());
+      setInputError(null);
+      sendMessage(trimmed);
       setInputValue('');
     },
     [inputValue, sendMessage, isAuthenticated]
@@ -270,19 +295,32 @@ export default function Chat() {
             )}
           </div>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-8 gap-2 text-xs text-muted-foreground hover:text-foreground"
-          onClick={toggleAnimations}
-        >
-          <Settings className="w-4 h-4" />
-          {uiPreferences.chat_animations ? 'Animations On' : 'Animations Off'}
-        </Button>
+        <div className="flex items-center gap-2">
+          {onCollapse && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted/40"
+              onClick={onCollapse}
+              aria-label="Collapse chat"
+            >
+              <PanelRightClose className="w-4 h-4" />
+            </Button>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 gap-2 text-xs text-muted-foreground hover:text-foreground"
+            onClick={toggleAnimations}
+          >
+            <Settings className="w-4 h-4" />
+            {uiPreferences.chat_animations ? 'Animations On' : 'Animations Off'}
+          </Button>
+        </div>
       </div>
 
       {/* Messages - Fixed height with scroll */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto chat-scroll px-5 py-4 min-h-0 space-y-3">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto chat-scroll px-5 py-4 min-h-0 space-y-3.5">
         {isLoading ? (
             <div className="flex items-center justify-center h-full text-muted-foreground text-base">Loading...</div>
         ) : (
@@ -306,10 +344,11 @@ export default function Chat() {
                   onDismiss={() => setDismissedPollId(visibleClosedPoll.id)}
                 />
               )}
-              {messages.map((msg) => (
+              {messages.map((msg, index) => (
                 <ChatMessageRow
                   key={msg.id}
                   message={msg}
+                  index={index}
                   animate={animationsEnabled}
                   pulseClass={getPulseClass(msg)}
                 />
@@ -361,22 +400,25 @@ export default function Chat() {
                     onChange={(e) => setInputValue(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleSend()}
                     disabled={!isConnected}
-                    className="flex-1 h-10 bg-background border border-border/50 rounded-lg text-base placeholder:text-muted-foreground/70 focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:border-primary/50"
+                    className="flex-1 min-h-[var(--control-height-md)] bg-background border border-border/50 rounded-[var(--control-radius)] text-[var(--font-size-md)] placeholder:text-muted-foreground/70 focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:border-primary/50"
                 />
                 <Button 
                     size="icon" 
-                    className="h-10 w-10 bg-primary text-primary-foreground hover:bg-primary/90 shrink-0 rounded-lg" 
+                    className="bg-primary text-primary-foreground hover:bg-primary/90 shrink-0 rounded-[var(--control-radius)]" 
                     onClick={handleSend}
-                    disabled={!isConnected || !inputValue.trim()}
+                    disabled={!isConnected || !inputValue.trim() || !!inputError}
                 >
                     <Send className="w-4 h-4" />
                 </Button>
                 </div>
                 <div className="flex justify-end mt-2 px-0.5">
-                  <p className="text-xs text-muted-foreground/60 font-medium">
+                  <p className="text-[var(--font-size-xs)] leading-[var(--line-height-tight)] text-muted-foreground/60 font-medium">
                       {inputValue.length} / {CHAT_MESSAGE_MAX_LENGTH}
                   </p>
                 </div>
+                {inputError && (
+                  <div className="text-xs text-destructive mt-1">{inputError}</div>
+                )}
                 {/* Bonus section - Always visible (enabled or disabled state) */}
                 <div className="mt-3 rounded-lg border border-border/50 bg-muted/30 p-3">
                   <div className="flex items-center justify-between gap-3">

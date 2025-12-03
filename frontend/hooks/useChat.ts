@@ -45,6 +45,7 @@ export function useChat(raceId: string, enabled: boolean): UseChatReturn {
   // We use a ref for the WebSocket to access it in cleanup/callbacks without re-triggering effects
   const wsRef = useRef<WebSocket | null>(null);
   const errorTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const connectInProgressRef = useRef(false);
   
   // This state is used to force a reconnection
   const [reconnectTrigger, setReconnectTrigger] = useState(0);
@@ -133,8 +134,14 @@ export function useChat(raceId: string, enabled: boolean): UseChatReturn {
     const maxReconnectAttempts = retryDelays.length;
 
     const connect = () => {
+      if (connectInProgressRef.current) {
+        logger.debug('Skipping duplicate WebSocket connect attempt');
+        return;
+      }
+      connectInProgressRef.current = true;
       // Check cleanup state before doing anything
       if (isCleanup) {
+        connectInProgressRef.current = false;
         logger.debug('Skipping connection attempt - component is unmounting');
         return;
       }
@@ -174,6 +181,7 @@ export function useChat(raceId: string, enabled: boolean): UseChatReturn {
         ws.onopen = () => {
           // Check cleanup state immediately on open
           if (isCleanup) {
+            connectInProgressRef.current = false;
             logger.debug('Component unmounted during connection, closing socket');
             if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
               try {
@@ -188,6 +196,7 @@ export function useChat(raceId: string, enabled: boolean): UseChatReturn {
           setIsConnected(true);
           setChatError(null);
           reconnectAttempts = 0; // Reset retry attempts on successful connection
+          connectInProgressRef.current = false;
 
           // Setup ping
           pingInterval = setInterval(() => {
@@ -334,6 +343,7 @@ export function useChat(raceId: string, enabled: boolean): UseChatReturn {
         };
 
         ws.onclose = (event) => {
+          connectInProgressRef.current = false;
           if (isCleanup) {
             // Component is unmounting, don't try to reconnect or log errors
             return;
@@ -368,6 +378,7 @@ export function useChat(raceId: string, enabled: boolean): UseChatReturn {
         ws.onerror = (e) => {
           // Suppress errors during cleanup (component unmounting)
           if (isCleanup) {
+            connectInProgressRef.current = false;
             return;
           }
           // Error details usually appear in onclose
@@ -379,6 +390,7 @@ export function useChat(raceId: string, enabled: boolean): UseChatReturn {
 
       } catch (e) {
         logger.error('Failed to create WebSocket:', e);
+        connectInProgressRef.current = false;
         // Retry if creation fails (e.g. URL error) using the same retry schedule
         if (reconnectAttempts < maxReconnectAttempts) {
           const delay = retryDelays[reconnectAttempts];
@@ -397,6 +409,7 @@ export function useChat(raceId: string, enabled: boolean): UseChatReturn {
     return () => {
       isCleanup = true;
       logger.debug('Cleaning up chat connection');
+      connectInProgressRef.current = false;
       
       // Clear any pending timeouts first
       if (reconnectTimeout) {

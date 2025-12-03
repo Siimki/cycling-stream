@@ -54,12 +54,11 @@ export function ToggleSwitch({
         data-motion={motionEnabled ? 'on' : 'off'}
       />
       {(label || description) && (
-        <span className="ml-3 text-left">
-          {label && <span className="block text-sm font-medium text-foreground">{label}</span>}
-          {description && <span className="block text-xs text-muted-foreground">{description}</span>}
+        <span className="ml-[var(--space-3)] text-left">
+          {label && <span className="block text-[var(--font-size-sm)] font-medium text-foreground leading-[var(--line-height-tight)]">{label}</span>}
+          {description && <span className="block text-[var(--font-size-xs)] text-muted-foreground leading-[var(--line-height-base)]">{description}</span>}
         </span>
       )}
     </button>
   );
 }
-
